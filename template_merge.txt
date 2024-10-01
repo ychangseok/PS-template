@@ -17,28 +17,14 @@
 using namespace std;
 
 typedef long long ll;
-typedef unsigned long long ull;
 typedef long double lb;
 typedef pair<int, int> pii;
-typedef pair<int, pii> piii;
 typedef pair<ll, ll> pll;
-typedef pair<ll, pll> plll;
-typedef pair<pll, pll> LINE;
-typedef vector<ll> vll;
 
 #define all(v) v.begin(), v.end()
-#define FAST cin.tie(0), cout.tie(0);
-#define FASTIO cin.tie(0), cout.tie(0), ios::sync_with_stdio(0);
-#define fr(j, n) for(int i = j; i < n + j; i++)
-#define pb push_back
-#define cx first
-#define cy second
 
 #define MAX 100000 
-#define MOD 998_244_353
-#define MOD 1_000_000_007
-#define int_INF (1<<31-1)
-#define PI 3.141592653589793238462
+#define MOD 998244353
 
 #pragma GCC optimize ("Ofast")
 #pragma GCC target("avx,avx2")
