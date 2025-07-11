@@ -27,6 +27,7 @@ typedef pair<pll, pll> LINE;
 typedef vector<ll> vll;
 
 #define all(v) v.begin(), v.end()
+#define zip(v) sort(all(v)); v.erase(unique(all(v)), v.end());
 #define FAST cin.tie(0), cout.tie(0);
 #define FASTIO cin.tie(0), cout.tie(0), ios::sync_with_stdio(0);
 #define fr(j, n) for(int i = j; i < n + j; i++)
@@ -40,7 +41,9 @@ typedef vector<ll> vll;
 #define int_INF (1<<31-1)
 #define PI 3.141592653589793238462
 
+#pragma GCC optimize ("O3")
 #pragma GCC optimize ("Ofast")
+#pragma GCC optimize ("unroll-loops")
 #pragma GCC target("avx,avx2")
 
 int dx[4] = {-1, 0, 1, 0};
@@ -49,11 +52,19 @@ int dy[4] = {0, 1, 0, -1};
 int dx[8] = {-2, -1, 1, 2, 2, 1, -1, -2};
 int dy[8] = {1, 2, 2, 1, -1, -2, -2, -1};
 
-// ================Memo to Myself===========================
+#include <ext/pb_ds/assoc_container.hpp>
+#include <ext/pb_ds/tree_policy.hpp>
+using namespace __gnu_pbds;
+#define ordered_set tree<pii, null_type, less<pii>, rb_tree_tag,tree_order_statistics_node_update>
 
-// Don't forget TREESET, STACK
+/* ================Memo to Myself===========================
 
-// ==================================MATH===============================
+std::set, stack 까먹지 않기
+문제에서 특별한 언급이 없다면 self-loop / multiple edge가 주어질 수 있다
+
+============================================================= */
+
+// ==================================MATH=============================== 
 
 template <class T>
 class Fraction{
@@ -631,7 +642,6 @@ Polynomial<T> linear_det(Matrix<T> A, Matrix<T> B, ll mod=0){
     return ans;
 }
 
-
 ll phi(ll n){
 	map<ll, ll> m;
 	map<ll, ll>::iterator iter;
@@ -879,23 +889,204 @@ void ntt(vector<ll> &P, bool inverse, ll g, const ll mod){
     }
 }
 
+ll f(ll v){
+    // by pani
+    v |= v >> 1;
+    v |= v >> 2;
+    v |= v >> 4;
+    v |= v >> 8;
+    v |= v >> 16;
+    // v |= v >> 32;
+    v++;
+    return v;
+}
+vector<ll> polymul(vector<ll> v1, vector<ll> v2){
+    // cout << "Polymul" << endl;
+    // NTT mod 998244353
+
+    ll n1 = v1.size();
+    ll n2 = v2.size();
+
+    ll N = f(n1 + n2 - 1);
+
+    v1.resize(N);
+    v2.resize(N);
+
+    ll g = power(3, 998244353 / N);
+    ntt(v1, false, g);
+    ntt(v2, false, g);
+
+    vector<ll> res(N);
+    for (int i = 0; i < N; i++){
+        res[i] = v1[i] * v2[i];
+    }
+
+    ntt(res, true, g);
+
+    return res;
+}
+vector<ll> solve(const vector<vector<ll> > &v, int left, int right){
+    // cout << left << ' ' << right << endl;
+
+    if (left == right) return v[left];
+
+    int mid = (left + right) / 2;
+
+    vector<ll> v1 = solve(v, left, mid);
+    vector<ll> v2 = solve(v, mid+1, right);
+
+    return polymul(v1, v2);
+}
+
+ll crt(int n, const vector<ll> &a, const vector<ll> &p){
+	// n = a.size() = p.size()
+	// p의 원소들은 pairwise 서로소
+    // x = a[i] (mod pi), 0 <= i < n
+
+	ll res = 0;
+	ll N = 1;
+	for (int i = 0; i < n; i++) N *= p[i];
+
+	for (int i = 0; i < n; i++){
+		ll Ni = N / p[i];
+		ll Mi = invmod(Ni, p[i]);
+		res += a[i] * Mi * Ni % N; // overflow 가능성 있음
+		res %= N;
+	}
+
+	return res;
+}
+//========================NEW GEOMETRY=========================
+
+template <class T>
+struct P2{
+    T x, y;
+
+    P2 (ll x_=0, ll y_=0){
+        x = x_;
+        y = y_;
+    }
+
+    P2 operator+ (const P2 &p) const{ return P2(x+p.x, y+p.y);}
+    P2 operator- (const P2 &p) const{ return P2(x-p.x, y-p.y);}
+    P2 operator- (){ return P2(-x, -y);}
+    T operator* (const P2 &p) const{ return x*p.x + y*p.y;}
+    P2 operator* (const T d) const{ return P2(x*d, y*d);}
+    P2 r90() { return P2(y, -x);}
+    T operator^ (const P2 &p) const{ return x*p.y-y*p.x;}
+    T size() { return x*x+y*y;}
+    bool operator< (const P2 &p) const{ return pll{x, y} < pll{p.x, p.y};}
+    bool operator> (const P2 &p) const{ return pll{x, y} > pll{p.x, p.y};}
+    bool operator<= (const P2 &p) const{ return pll{x, y} <= pll{p.x, p.y};}
+    bool operator>= (const P2 &p) const{ return pll{x, y} >= pll{p.x, p.y};}
+    bool operator== (const P2 &p) const{ return x==p.x && y==p.y;}
+};
+using PT = P2<ll>;
+using polygon = vector<P2<ll>>;
+
+struct P3{
+    lb x, y, z;
+    
+    P3 operator+(const P3 &p) const{
+        return P3{x+p.x, y+p.y, z+p.z};
+    }
+    P3 operator-(const P3 &p) const{
+        return P3{x-p.x, y-p.y, z-p.z};
+    }
+    P3 operator*(lb mult){
+        return P3{x*mult, y*mult, z*mult};
+    }
+    P3 operator^(const P3 &p) const{
+        return P3{y*p.z-p.y*z, z*p.x-p.z*x, x*p.y-p.x*y};
+    }
+    lb norm(){
+        return sqrt(x*x+y*y+z*z);
+    }
+};
+
+ll ccw(const PT &p1, const PT &p2, const PT &p3){
+    ll op = (p2-p1)^(p3-p1);
+    return (op>0)-(op<0);
+}
+bool isIntersect(PT A, PT B, PT C, PT D){
+    // check segment AB and segment CD intersects
+
+	ll ab = ccw(A, B, C) * ccw(A, B, D);
+	ll cd = ccw(C, D, A) * ccw(C, D, B);
+    if (ab == 0 && cd == 0){
+		if (A > B) swap(A, B);
+		if (C > D) swap(C, D);
+		return C <= B && A <= D;
+	}
+	return ab <= 0 && cd <= 0;
+}
+
+bool PointInConvexPolygon(const polygon &v, const PT&p){
+	// https://github.com/justiceHui/icpc-teamnote/blob/master/code/Geometry/PointInConvexPolygon.cpp
+	// v : counterclockwise
+
+	if (ccw(v[0], v[1], p) < 0) return false;
+
+	int l = 1;
+	int r = v.size() - 1;
+
+	while (l < r){
+		int m = (l + r + 1) / 2;
+		if (ccw(v[0], v[m], p) >= 0){
+			l = m;
+		}else{
+			r = m-1;
+		}
+	}
+
+	if (l == v.size() - 1){
+		return isIntersect(v[0], v.back(), p, p);
+	}
+	return ccw(v[0], v[l], p) >= 0 && ccw(v[l], v[l+1], p) >= 0 && ccw(v[l+1], v[0], p) >= 0;
+}
+
+void reorder(polygon &P){
+    int pos = 0;
+    int n = P.size();
+
+    for (int i = 1; i < n; i++){
+        if (P[i].y < P[pos].y || (P[i].y == P[pos].y && P[i].x < P[pos].x)){
+            pos = i;
+        }
+    }
+
+    rotate(P.begin(), P.begin()+pos, P.end());
+}
+polygon minkowski_sum (polygon P, polygon Q){
+    // minkowski sum of two convex polygon
+    // O(|P| + |Q|)
+    
+    reorder(P);
+    reorder(Q);
+
+    int psz = P.size();
+    int qsz = Q.size();
+
+    polygon res;
+    int i = 0;
+    int j = 0;
+
+    while (i < psz || j < qsz){
+        res.push_back(P[i%psz]+Q[j%qsz]);
+
+        ll crs = (P[(i+1)%psz]-P[i%psz])^(Q[(j+1)%qsz]-Q[j%qsz]);
+        
+        if (crs >= 0 && i < psz) i++;
+        if (crs <= 0 && j < qsz) j++;
+    }
+
+    return res;
+}
+
 //===========================GEOMETRY=======================
 
 // segment : 선분
 // line : 직선
-
-ll ccw(const POINT<ll> &p1, const POINT<ll> &p2, const POINT<ll> &p3){
-    ll op = p1.x*p2.y + p2.x*p3.y + p3.x*p1.y;
-    op -= p1.y*p2.x + p2.y*p3.x + p3.y*p1.x;
-    return (op > 0) - (op < 0);
-}
-ll ccw(pll a, pll b, pll c){
-	POINT<ll> A(a.first, a.second);
-	POINT<ll> B(b.first, b.second);
-	POINT<ll> C(c.first, c.second);
-
-	return ccw(A, B, C);
-}
 
 template <class T>
 class POINT3D{
@@ -1016,6 +1207,7 @@ public:
         return {x, y};
     }
 };
+
 
 template <class T>
 class CIRCLE{
@@ -1251,44 +1443,79 @@ vector<POINT<ll> > convex_hull(vector<POINT<ll> > v){
     return ans;
 }
 
+bool bcw(const POINT<ll> &p1, const POINT<ll> &p2, const POINT<ll> &p3, bool include_collinear=false){
+    ll op = p1.x*p2.y + p2.x*p3.y + p3.x*p1.y;
+    op -= p1.y*p2.x + p2.y*p3.x + p3.y*p1.x;
+    return (op < 0) || (op == 0 && include_collinear);
+}
+bool bccw(const POINT<ll> &p1, const POINT<ll> &p2, const POINT<ll> &p3, bool include_collinear=false){
+    ll op = p1.x*p2.y + p2.x*p3.y + p3.x*p1.y;
+    op -= p1.y*p2.x + p2.y*p3.x + p3.y*p1.x;
+    return (op > 0) || (op == 0 && include_collinear);
+}
+bool bcw(pll a, pll b, pll c, bool include_collinear=false){
+	POINT<ll> A(a.first, a.second);
+	POINT<ll> B(b.first, b.second);
+	POINT<ll> C(c.first, c.second);
 
-void reorder(vector<POINT> &P){
-    int pos = 0;
-    int n = P.size();
+	return bcw(A, B, C, include_collinear);
+}
+bool bccw(pll a, pll b, pll c, bool include_collinear=false){
+	POINT<ll> A(a.first, a.second);
+	POINT<ll> B(b.first, b.second);
+	POINT<ll> C(c.first, c.second);
+
+	return bccw(A, B, C, include_collinear);
+}
+// included option for collinear pts
+void convex_hull(vector<POINT<ll> >&  v, bool include_collinear=false){
+    // monotone chain
+
+    if (v.size() == 1)
+        return;
+    
+    sort(all(v),
+        [](POINT<ll> p1, POINT<ll> p2) -> bool{
+            if (p1.x == p2.x) return p1.y < p2.y;
+            return p1.x < p2.x;
+        }
+    );
+
+    int n = v.size();
+    POINT<ll> p1 = v[0], p2 = v.back();
+
+    vector<POINT<ll> > up, down;
+    up.push_back(p1);
+    down.push_back(p1);
 
     for (int i = 1; i < n; i++){
-        if (P[i].y < P[pos].y || (P[i].y == P[pos].y && P[i].x < P[pos].x)){
-            pos = i;
+        if (i == n-1 || bcw(p1, v[i], p2, include_collinear)){
+            while (up.size() >= 2 && !bcw(up[up.size()-2], up[up.size()-1], v[i], include_collinear)){
+                up.pop_back();
+            } 
+            up.push_back(v[i]);
+        }
+        if (i == n-1 || bccw(p1, v[i], p2, include_collinear)){
+            while (down.size() >= 2 && !bccw(down[down.size()-2], down[down.size()-1], v[i], include_collinear)){
+                down.pop_back();
+            }
+            down.push_back(v[i]);
         }
     }
 
-    rotate(P.begin(), P.begin()+pos, P.end());
-}
-vector<POINT> minkowski_sum (vector<POINT> P, vector<POINT> Q){
-    // minkowski sum of two convex polygon
-    // O(|P| + |Q|)
-    
-    reorder(P);
-    reorder(Q);
-
-    P.push_back(P[0]);
-    P.push_back(P[1]);
-    Q.push_back(Q[0]);
-    Q.push_back(Q[1]);
-
-    vector<POINT> res;
-    int i = 0, j = 0;
-
-    while (i < P.size() - 2 || j < Q.size() - 2){
-        res.push_back(add(P[i], Q[j]));
-        ll crs = cross(sub(P[i+1], P[i]), sub(Q[j+1], Q[j]));
-        
-        if (crs >= 0 && i < P.size() - 2) i++;
-        if (crs <= 0 && j < Q.size() - 2) j++;
+    if (include_collinear && up.size() == v.size()){
+        // reverse(all(v));
+        return;
     }
+    v.clear();
 
-    return res;
+    v.insert(v.end(), all(down));
+    up.pop_back();
+    reverse(all(up));
+    up.pop_back();
+    v.insert(v.end(), all(up));
 }
+
 
 template <class T>
 POINT3D<lb> center_of_enclosing_circle (POINT3D<T> p1, POINT3D<T> p2, POINT3D<T> p3){
@@ -1418,6 +1645,45 @@ ll closestPoint(int n, vector<POINT<ll> > v){
     return d;
 }
 
+int getplane(ll x, ll y){
+    if (y == 0){
+        if (x > 0) return 0;
+        return 4;
+    }
+    if (x == 0){
+        if (y > 0) return 2;
+        return 6;
+    }
+
+    if (x > 0 && y > 0){
+        return 1;
+    }
+    if (x < 0 && y > 0){
+        return 3;
+    }
+    if (x > 0 && y < 0){
+        return 7;
+    }
+    if (x < 0 && y < 0){
+        return 5;
+    }
+}
+ll ccw(POINT<ll> s1, POINT<ll> s2){
+    return s1.x*s2.y - s1.y*s2.x;
+}
+bool cmp (POINT<ll> s1, POINT<ll> s2){
+    int d1 = getplane(s1.x, s1.y);
+    int d2 = getplane(s2.x, s2.y);
+
+    if (d1 == d2){
+        if (ccw(s1, s2) == 0){
+            return s1.x*s1.x + s1.y*s1.y < s2.x*s2.x + s2.y*s2.y;
+        }
+        return ccw(s1, s2) > 0;
+    }
+    return d1 < d2;
+}
+
 // ===========================GRAPH================
 
 vector<ll> dijkstra(int start){
@@ -1450,24 +1716,350 @@ vector<ll> dijkstra(int start){
     return dist;
 }
 
-int getparent(int x){
-	if (parent[x] == x){
-		return x;
-	}
-	parent[x] = getparent(parent[x]);
-	return parent[x];
-}
-void unionparent(int x, int y){
-	int a = getparent(x);
-	int b = getparent(y);
-	
-    if (a == b) return;
-
-	if (sz[a] < sz[b]) swap(a, b);
+struct UF{
+    vector<int> par, sz;
+    int n;
     
-    parent[b] = a;
-    sz[a] += sz[b];
-}
+    UF(int n_){
+        n = n_;
+        par.resize(n+1);
+        sz.resize(n+1);
+        init();
+    }
+    
+    void init(){
+        for (int i = 1; i <= n; i++){
+            par[i] = i;
+            sz[i] = 1;
+        }
+    }
+    int get(int u){
+        if (u == par[u]) return u;
+        return par[u] = get(par[u]);
+    }
+    void merge(int u, int v){
+        u = get(u);
+        v = get(v);
+
+        if (u == v) return;
+        if (u > v) swap(u, v);
+
+        par[v] = u;
+        sz[u] += sz[v];
+    }
+    bool same(int u, int v){
+        return get(u) == get(v);
+    }
+};
+
+struct UFrollback{
+    vector<int> par, sz;
+    int n;
+
+    struct info{
+        int u, v, pu, pv, szu, szv;
+    };
+    vector<info> trace;
+    
+    UFrollback(int n_){
+        n = n_;
+        par.resize(n+1);
+        sz.resize(n+1);
+        init();
+        trace.clear();
+    }
+    
+    void init(){
+        for (int i = 1; i <= n; i++){
+            par[i] = i;
+            sz[i] = 1;
+        }
+    }
+    int get(int u){
+        if (u == par[u]) return u;
+        return par[u] = get(par[u]);
+    }
+    void merge(int u, int v){
+        u = get(u);
+        v = get(v);
+
+        if (u == v) return;
+        if (u > v) swap(u, v);
+
+        trace.push_back({u, v, par[u], par[v], sz[u], sz[v]});
+
+        par[v] = u;
+        sz[u] += sz[v];
+    }
+    bool same(int u, int v){
+        return get(u) == get(v);
+    }
+
+    void rollback(int SZ=0){
+        while (trace.size() != SZ){
+            info cur = trace.back();
+
+            int u = cur.u;
+            int v = cur.v;
+            par[u] = cur.pu;
+            par[v] = cur.pv;
+            sz[u] = cur.szu;
+            sz[v] = cur.szv;
+
+            trace.pop_back();
+        }
+    }
+
+};
+
+struct RootedTreeHashing{
+    const ll MOD = 998244353;
+    const ll p = 9973;
+
+    int n;
+    vector<vector<int> > g;
+    vector<ll> h, sz;
+    vector<ll> pwp;
+
+    RootedTreeHashing(int n_){
+        n = n_;
+        g.resize(n+1);
+        h.resize(n+1);
+        sz.resize(n+1);
+        pwp.resize(n+1);
+
+        pwp[0] = 1;
+        for (int i = 1; i <= n; i++){
+            pwp[i] = pwp[i-1] * p % MOD;
+        }
+    }
+
+    void addEdge(int u, int v){
+        g[u].push_back(v);
+        g[v].push_back(u);
+    }
+
+    void hash(int cur=1, int pre=-1){
+        sz[cur] = 1;
+        for (int v : g[cur]){
+            if (v == pre) continue;
+            hash(v, cur);
+
+            sz[cur] += sz[v];
+            h[cur] += h[v] * h[v] + h[v] * pwp[sz[v]] + 42;
+            h[cur] %= MOD;
+        }
+    }
+};
+
+struct TreeHashing{
+    const vector<ll> MOD{1000000007, 998244353};
+    const vector<ll> p{9973, 1557};
+    const ll N = 2; // number of pair
+
+    int n, r;
+    vector<vector<int> > g;
+    vector<ll> sz;
+    vector<vector<ll> > h, pwp;
+
+    TreeHashing(int n_){
+        n = n_;
+        r = -1;
+        g.resize(n+1);
+        sz.resize(n+1);
+
+        for (int i = 0; i < N; i++){
+            vector<ll> tmp(n+1);
+            h.push_back(vector<ll>(n+1));
+            for (int j = 1; j <= n; j++){
+                tmp[j] = tmp[j-1] * p[i] % MOD[i];
+            }
+            pwp.push_back(tmp);
+        }
+    }
+
+    void setRoot(int r_){
+        r = r_;
+    }
+
+    void addEdge(int u, int v){
+        g[u].push_back(v);
+        g[v].push_back(u);
+    }
+
+    vector<int> getCent(){
+        vector<int> centroid;
+
+        function<void (int, int)> dfs = [&](int u, int pre){
+            sz[u] = 1;
+            bool is_cent = true;
+            for (int v : g[u]){
+                if (v == pre) continue;
+                dfs(v, u);
+                sz[u] += sz[v];
+                if (sz[v] > n/2) is_cent = false;
+            }
+            if (n - sz[u] > n/2) is_cent = false;
+            if (is_cent) centroid.push_back(u);
+        };
+
+        dfs(1, -1);
+        return centroid;
+    }
+
+    void addRoot(){
+        vector<int> cent = getCent();
+
+        if (cent.size() == 1) r = cent[0];
+        else {
+            n++;
+            sz.push_back(0);
+            g.push_back(vector<int>());
+            for (int i = 0; i < N; i++){
+                h[i].push_back(0);
+                pwp[i].push_back(pwp[i].back()*p[i]%MOD[i]);
+            }
+            
+            g[cent[0]].push_back(n);
+            g[cent[1]].push_back(n);
+            g[n].push_back(cent[0]);
+            g[n].push_back(cent[1]);
+            
+            for (int i = 0; i < g[cent[0]].size(); i++) if (g[cent[0]][i] == cent[1]) {g[cent[0]].erase(g[cent[0]].begin()+i); break;};
+            for (int i = 0; i < g[cent[1]].size(); i++) if (g[cent[1]][i] == cent[0]) {g[cent[1]].erase(g[cent[1]].begin()+i); break;};
+            r = n;
+        }
+    }
+
+    void cal(int cur, int pre, int idx){
+        sz[cur] = 1;
+        h[idx][cur] = 0;
+        for (int v : g[cur]){
+            if (v == pre) continue;
+            cal(v, cur, idx);
+
+            sz[cur] += sz[v];
+            h[idx][cur] += h[idx][v] * h[idx][v] + h[idx][v] * pwp[idx][sz[v]] + 42;
+            h[idx][cur] %= MOD[idx];
+        }
+    }
+
+    void hash(){
+        if (r == -1) addRoot();
+        
+        for (int i = 0; i < N; i++){
+            cal(r, -1, i);
+        };
+    }
+
+    vector<ll> getHash(){
+        hash();
+
+        vector<ll> tmp;
+        for (int i = 0; i < N; i++){
+            tmp.push_back(h[i][r]);
+        }
+        return tmp;
+    }
+};
+
+// tree -> string hashing
+struct TreeHashing{
+    const ll MOD = 998244353;
+    const ll p = 9973;
+
+    int n, r;
+    vector<vector<int> > g;
+    vector<string> h;
+    vector<int> sz, par;
+
+    TreeHashing(int n_){
+        n = n_;
+        r = -1;
+        g.resize(n+1);
+        h.resize(n+1);
+        sz.resize(n+1);
+        par.resize(n+1);
+    }
+
+    void setRoot(int r_){
+        r = r_;
+    }
+
+    void addEdge(int u, int v){
+        g[u].push_back(v);
+        g[v].push_back(u);
+    }
+
+    vector<int> getCent(){
+        vector<int> centroid;
+
+        function<void (int, int)> dfs = [&](int u, int pre){
+            sz[u] = 1;
+            bool is_cent = true;
+            for (int v : g[u]){
+                if (v == pre) continue;
+                dfs(v, u);
+                sz[u] += sz[v];
+                if (sz[v] > n/2) is_cent = false;
+            }
+            if (n - sz[u] > n/2) is_cent = false;
+            if (is_cent) centroid.push_back(u);
+        };
+
+        dfs(1, -1);
+        return centroid;
+    }
+
+    void addRoot(){
+        vector<int> cent = getCent();
+
+        if (cent.size() == 1) r = cent[0];
+        else {
+            n++;
+            sz.push_back(0);
+            h.push_back("");
+            g.push_back(vector<int>());
+            par.push_back(0);
+
+            g[cent[0]].push_back(n);
+            g[cent[1]].push_back(n);
+            g[n].push_back(cent[0]);
+            g[n].push_back(cent[1]);
+            
+            for (int i = 0; i < g[cent[0]].size(); i++) if (g[cent[0]][i] == cent[1]) {g[cent[0]].erase(g[cent[0]].begin()+i); break;};
+            for (int i = 0; i < g[cent[1]].size(); i++) if (g[cent[1]][i] == cent[0]) {g[cent[1]].erase(g[cent[1]].begin()+i); break;};
+            r = n;
+        }
+    }
+
+    void cal(int cur, int pre=-1){
+        h[cur] = '(';
+        vector<string> tmp;
+
+        for (int v : g[cur]){
+            if (v == pre) continue;
+            cal(v, cur);
+            tmp.push_back(h[v]);
+        }
+        sort(all(tmp));
+        for (string s : tmp){
+            h[cur] += s;
+        }
+        h[cur] += ')';
+    }
+
+    void hash(){
+        if (r == -1) addRoot();
+        cal(r);
+    }
+
+    string getHash(){
+        hash();
+        // cout << h[r] << endl;
+        return h[r];
+    }
+};
 
 // SCC (Tarjan's algorithm)
 ll d[MAX+3]; // 방문 순서
@@ -1508,6 +2100,7 @@ ll SCC(ll u){
 
     return parent;
 }
+
 void makeEdge(ll u, ll v){
     if (u > 0 && v > 0){
         graph[u+V].push_back(v);
@@ -1524,135 +2117,558 @@ void makeEdge(ll u, ll v){
     }
 }
 
-// max flow
-ll bfs(int s, int t, vector<int>& parent){
-    fill(all(parent), -1);
-    parent[s] = -2;
-    queue<pair<int, ll> > q;
-    q.push({s, INF});
+struct SCC{
+    vector<vector<int> > graph;
 
-    while (!q.empty()){
-        int cur = q.front().first;
-        ll flow = q.front().second;
+    vector<int> d;
+    vector<bool> finished;
+    vector<int> Scc;
+    int scc_index;
+    int id;
+    vector<vector<int> > SCCList;
+    stack<int> st;
 
-        // cout << cur << ' ' << flow << endl;
-        q.pop();
-
-        for (int nxt : graph[cur]){
-            // cout << "# " << cur << ' ' << nxt << endl;
-            if (parent[nxt] == -1 && capacity[cur][nxt]){
-                parent[nxt] = cur;
-                ll new_flow = min(flow, capacity[cur][nxt]);
-                
-                if (nxt == t) return new_flow;
-                q.push({nxt, new_flow});
-            }
-        } 
-    }  
-
-    return 0;
-}
-ll maxflow(int s, int t){
-    // https://cp-algorithms.com/graph/edmonds_karp.html
-    // Edmond-Karp
-    // find max-flow from s to t
-    // O(VE^2)
-
-    ll flow = 0;
-    vector<int> parent(MAX+3);
-    ll new_flow;
-
-    while (new_flow = bfs(s, t, parent)){
-        // cout << endl;
-
-        flow += new_flow;
-        int cur = t;
-        
-        while (cur != s){
-            int prev = parent[cur];
-            capacity[prev][cur] -= new_flow;
-            capacity[cur][prev] += new_flow;
-            cur = prev;
-        }
+    void addEdge(int u, int v){
+        graph[u].push_back(v);
     }
 
-    return flow;
-}
+    void init(int n_){
+        n = n_;
+        d.resize(n+1);
+        finished.resize(n+1);
+        Scc.resize(n+1);
+        graph.resize(n+1);
 
-// min cost max flow
-bool spfa(int s, int t, vector<int>& parent, vector<ll>& d){
-    fill(all(parent), -1);
-    fill(all(d), INF);
-    parent[s] = -2;
-    d[s] = 0;
+        for (int i = 1; i <= n; i++){
+            d[i] = 0;
+            finished[i] = false;
+            Scc[i] = 0;
+            graph[i].clear();
+        }
+        SCCList.clear();
+        scc_index = 0;
+        id = 0;
+    }
 
-    vector<bool> inQ(MAX+3, false);
+    int getscc(int u){
+        d[u] = ++id;
+        st.push(u);
 
-    queue<int> q;
-    q.push(s);
-    inQ[s] = true;
+        int parent = d[u];
+        for (int v : graph[u]){
+            if (d[v] == 0) parent = min(parent, getscc(v));
+            else if (!finished[v]) parent = min(parent, d[v]);
+        }
 
-    while (!q.empty()){
-        int cur = q.front();
-        q.pop();
-        inQ[cur] = false;
+        if (parent == d[u]){
+            vector<int> scc;
 
-        for (int nxt : graph[cur]){
-            // cout << "# " << cur << ' ' << nxt << endl;
-            if (capacity[cur][nxt] && d[cur] + cost[cur][nxt] < d[nxt]){
-                d[nxt] = d[cur] + cost[cur][nxt];
-                parent[nxt] = cur;
+            while (true){
+                int t = st.top(); st.pop();
+                scc.push_back(t);
+                finished[t] = true;
+                Scc[t] = scc_index;
 
-                if (!inQ[nxt]){
-                    q.push(nxt);
-                    inQ[nxt] = true;
+                if (t == u) break;
+            }
+
+            SCCList.push_back(scc);
+            scc_index++;
+        }
+
+        return parent;
+    }
+
+    void getSCC(){
+        for (int i = 1; i <= n; i++){
+            if (d[i] == 0) getscc(i);
+        }
+    }
+};
+
+struct BipartiteMatching{
+    int n, m;
+    vector<vector<int> > graph;
+    vector<int> amatch, bmatch;
+    vector<int> vis;
+    int visitcnt;
+
+    BipartiteMatching(int n_, int m_){
+        n = n_;
+        m = m_;
+
+        graph.resize(n+1, vector<int>());
+        vis.resize(n+1, 0);
+        visitcnt = 0;
+    }
+
+    void add(int u, int v){
+        graph[u].push_back(v);
+    }
+
+    bool dfs(int u){
+        if (vis[u] == visitcnt) return false;
+
+        vis[u] = visitcnt;
+
+        for (int v : graph[u]){
+            if (bmatch[v] == -1 || dfs(bmatch[v])){
+                amatch[u] = v;
+                bmatch[v] = u;
+
+                return true;
+            }
+        }
+        return false;
+    }
+    int matching(){
+        amatch = vector<int>(n+1, -1);
+        bmatch = vector<int>(m+1, -1);
+
+        int size = 0;
+        for (int i = 1; i <= n; i++){
+            visitcnt++;
+            size += dfs(i);
+        }
+        return size;
+    }
+};
+
+struct Flow{
+    struct Edge{
+        ll v, cap, cost;
+    };
+
+    vector<Edge> E;
+    int edgecnt;
+
+    int n;
+    vector<vector<int> > g;
+
+    Flow (int n_){
+        n = n_;
+        init();
+        g.resize(n+1);
+    }
+
+    void init(){
+        g.clear();
+        edgecnt = 0;
+        E.clear();
+    }
+
+    void addEdge(int u, int v, ll cap, ll cost=0){
+        g[u].push_back(edgecnt);
+        g[v].push_back(edgecnt+1);
+
+        E.push_back({v, cap, cost});
+        E.push_back({u, 0, -cost});
+        edgecnt += 2;
+    }
+    void addBidirectionalEdge(int u, int v, ll cap, ll cost=0){
+        g[u].push_back(edgecnt);
+        g[v].push_back(edgecnt+1);
+
+        E.push_back({v, cap, cost});
+        E.push_back({u, cap, cost});
+        edgecnt += 2;
+    }
+
+    bool spfa(int s, int t, vector<pair<int, int> >& parent, vector<ll>& d){
+        fill(all(parent), make_pair(-1, -1));
+        fill(all(d), 9e18);
+        parent[s].first = -2;
+        d[s] = 0;
+
+        vector<bool> inQ(n+3, false);
+
+        queue<int> q;
+        q.push(s);
+        inQ[s] = true;
+
+        while (!q.empty()){
+            int cur = q.front();
+            q.pop();
+            inQ[cur] = false;
+
+            for (int nxt : g[cur]){
+                int v = E[nxt].v;
+                if (E[nxt].cap && d[cur] + E[nxt].cost < d[v]){
+                    d[v] = d[cur] + E[nxt].cost;
+                    parent[v] = {cur, nxt};
+
+                    if (!inQ[v]){
+                        q.push(v);
+                        inQ[v] = true;
+                    }
                 }
+            } 
+        }  
+
+        return parent[t].first != -1;
+    }
+    pair<ll, ll> maxflow(int s, int t){
+        ll res = 0;
+        ll flow = 0;
+        vector<pair<int, int> > parent(n+3);
+        vector<ll> d(n+3);
+
+        while (spfa(s, t, parent, d)){
+
+            ll new_flow = 1;
+            int cur = t;
+            while (cur != s){
+                pair<int, int> prev = parent[cur];
+
+                new_flow = min(new_flow, E[prev.second].cap);
+                cur = prev.first;
             }
-        } 
-    }  
+            
+            cur = t;
+            flow += new_flow;
 
-    return parent[t] != -1;
-}
-pair<ll, ll> maxflow(int s, int t){
-    ///https://m.blog.naver.com/kks227/220810623254
-    // min-cost max-flow
-    // find min-cost max-flow from s to t
-    // O(VEf)
+            while (cur != s){
+                pair<int, int> prev = parent[cur];
 
-    ll res = 0;
-    ll flow = 0;
-    vector<int> parent(MAX+3);
-    vector<ll> d(MAX+3);
-
-    while (spfa(s, t, parent, d)){
-
-        ll new_flow = INF;
-        int cur = t;
-        while (cur != s){
-            int prev = parent[cur];
-
-            new_flow = min(new_flow, capacity[prev][cur]);
-            cur = prev;
+                res += new_flow * E[prev.second].cost;
+                E[prev.second].cap -= new_flow;
+                E[prev.second^1].cap += new_flow;
+                cur = prev.first;
+            }
         }
-        
-        cur = t;
-        flow += new_flow;
 
-        // cout << cur << ' ';
-        while (cur != s){
-            int prev = parent[cur];
-
-            res += new_flow * cost[prev][cur];
-            capacity[prev][cur] -= new_flow;
-            capacity[cur][prev] += new_flow;
-            cur = prev;
-            // cout << cur << ' ';
-        }
-        // cout << endl;
+        return {flow, res};
     }
 
-    return {flow, res};
+};
+
+struct Dinic {
+	struct Edge {
+		ll v, cap, cost;
+	};
+
+	vector<Edge> E;
+    int edgecnt;
+
+    int n;
+    vector<vector<int> > g;
+
+    Dinic(int n_){
+        n = n_;
+        init();
+        g.resize(n+1);
+        work.resize(n+1);
+        check.resize(n+1);
+    }
+
+    void init(){
+        g.clear();
+        edgecnt = 0;
+        E.clear();
+    }
+
+	void addEdge(int u, int v, ll cap=1, ll cost=0) {
+        g[u].push_back(edgecnt);
+        g[v].push_back(edgecnt+1);
+
+        E.push_back({v, cap, cost});
+        E.push_back({u, 0, -cost});
+        edgecnt += 2;
+	}
+    void addBidirectionalEdge(int u, int v, ll cap=1, ll cost=0){
+        g[u].push_back(edgecnt);
+        g[v].push_back(edgecnt+1);
+
+        E.push_back({v, cap, cost});
+        E.push_back({u, cap, cost});
+        edgecnt += 2;
+    }
+
+	bool spfa(int s, int t, vector<pair<int, int> >& parent, vector<ll>& d){
+        fill(all(parent), make_pair(-1, -1));
+        fill(all(d), 9e18);
+        parent[s].first = -2;
+        d[s] = 0;
+
+        vector<bool> inQ(n+3, false);
+
+        queue<int> q;
+        q.push(s);
+        inQ[s] = true;
+
+        while (!q.empty()){
+            int cur = q.front();
+            q.pop();
+            inQ[cur] = false;
+
+            for (int nxt : g[cur]){
+                int v = E[nxt].v;
+                if (E[nxt].cap && d[cur] + E[nxt].cost < d[v]){
+                    d[v] = d[cur] + E[nxt].cost;
+                    parent[v] = {cur, nxt};
+
+                    if (!inQ[v]){
+                        q.push(v);
+                        inQ[v] = true;
+                    }
+                }
+            } 
+        }  
+
+        return parent[t].first != -1;
+    }
+
+    vector<bool> check;
+    vector<int> work;
+    
+	ll dfs(int s, int t, int now, ll flow, const vector<ll> &d) {
+		check[now] = true;
+		if(now == t) return flow;
+
+		for(; work[now] < g[now].size(); work[now]++) {
+			auto &e = E[g[now][work[now]]];
+
+			if(!check[e.v] && d[e.v] == d[now] + e.cost && e.cap) {
+				ll ret = dfs(s, t, e.v, min(flow, e.cap), d);
+
+				if (ret == 0) continue;
+                
+                e.cap -= ret;
+                E[g[now][work[now]]^1].cap += ret;
+                return ret;
+			}
+		}
+
+		return 0;
+	}
+
+	pair<ll, ll> flow(int s, int t) {
+        ll res = 0;
+        ll flow = 0;
+        vector<pair<int, int> > parent(n+3);
+        vector<ll> d(n+3);
+        
+		while(spfa(s, t, parent, d)) {
+            fill(all(check), false);
+            fill(all(work), 0);
+            
+		    ll now = 0;
+			while(now = dfs(s, t, s, 1e18, d)) {
+				res += d[t] * now;
+				flow += now;
+                fill(all(check), false);
+			}
+		}
+
+		return {flow, res};
+	}
+
+};
+
+// Heavy-light decomposition
+int dep[MAX], par[MAX], sz[MAX], in[MAX], out[MAX], top[MAX];
+ll idx = 0;
+vector<int> adj[MAX]; // adj list
+vector<int> graph[MAX];
+
+void dfs(int v=1, int prev=-1){
+    for (int u : adj[v]){
+        if (u == prev) continue;
+
+        graph[v].push_back(u);
+        dfs(u, v);
+    }
 }
+void dfs1(int v=1){
+    sz[v] = 1;
+
+    for (int &u : graph[v]){
+        dep[u] = dep[v] + 1;
+        par[u] = v;
+        dfs1(u);
+        sz[v] += sz[u];
+
+        if (sz[u] > sz[graph[v][0]]) swap(u, graph[v][0]);
+    }
+}
+void dfs2(int v=1){
+    in[v] = ++idx;
+    for (int u : graph[v]){
+        top[u] = (u == graph[v][0]) ? top[v] : u;
+        dfs2(u);
+    }
+    out[v] = idx;
+}
+
+// u-v 경로에 query
+while (top[u] != top[v]){
+    if (dep[top[u]] < dep[top[v]]) swap(u, v);
+
+    ll xx = top[u];
+    seg.Range_update(in[xx], in[u], 1);
+    u = par[xx];
+}
+
+if (dep[u] > dep[v]) swap(u, v);
+seg.Range_update(in[u], in[v], 1);
+
+struct VertexDisjointBCC{
+    vector<int> graph[N+3];
+
+    void addEdge(int u, int v){
+        graph[u].push_back(v);
+        graph[v].push_back(u);
+    }
+
+    int dfsn[N+3], low[N+3], pv;
+    vector<int> artpoint;
+
+    void dfs(int u, int pre, bool isRoot){
+        dfsn[u] = low[u] = ++pv;
+        bool put = false;
+        int child = 0;
+
+        for (int v : graph[u]){
+            if (pre == v) continue;
+            if (dfsn[v]) low[u] = min(low[u], dfsn[v]);
+            else{
+                child++;
+                dfs(v, u, false);
+
+                if (!put && !isRoot && low[v] >= dfsn[u]){
+                    put = true;
+                    artpoint.push_back(u);
+                }
+                low[u] = min(low[u], low[v]);
+            }
+        }
+
+        if (isRoot && child > 1){
+            artpoint.push_back(u);
+        }
+    }
+
+    int bcnt, bcc[N+3];
+    vector<pair<int, int> > bridge;
+    void color(int u, int col){
+        bcc[u] = col;
+        for (int v : graph[u]){
+            if (bcc[v]) continue;
+            if (low[v] <= dfsn[u]) color(v, col);
+            else{
+                bridge.push_back({min(u,v),max(u,v)});
+                color(v, ++bcnt);
+            }
+        }
+    }
+
+    void init(int n){
+        pv = bcnt = 0;
+        for (int i = 1; i <= n; i++){
+            graph[i].clear();
+            dfsn[i] = low[i] = bcc[i] = 0;
+        }
+        bridge.clear();
+        artpoint.clear();
+    }
+    void get_bcc(int n){
+        for (int i = 1; i <= n; i++){
+            if (dfsn[i]) continue;
+            dfs(i, -1, true);
+        }
+        for (int i = 1; i <= n; i++){
+            if (bcc[i]) continue;
+            color(i, ++bcnt);
+        }
+    }    
+};
+
+struct sjh1224BCC{
+    vector<int> graph[N+3];
+
+    void addEdge(int u, int v){
+        graph[u].push_back(v);
+        graph[v].push_back(u);
+    }
+
+    bool vis[N+3];
+    int dfsn[N+3];
+    vector<int> bcc[N+3];
+    vector<int> artpoint;
+    vector<pair<int, int> > bridge;
+    vector<vector<pair<int, int> > > bccedge;
+    vector<pair<int, int> > st;
+
+    int dfs(int u, int pre){
+        dfsn[u] = st.size();
+        int r = dfsn[u];
+        
+        for (int v : graph[u]){
+            if (dfsn[v] == -1){
+                st.push_back({u, v});
+                int d = dfs(v, u);
+
+                if (d >= dfsn[u]){
+                    vector<pair<int, int> > tmp;
+                    while (st.back() != make_pair(u, v)){
+                        pair<int, int> p = st.back();
+                        st.pop_back();
+                        bcc[p.first].push_back(bccedge.size());
+                        tmp.push_back(p);
+                    }
+
+                    st.pop_back();
+                    bcc[u].push_back(bccedge.size());
+                    bcc[v].push_back(bccedge.size());
+                    tmp.push_back({u, v});
+                    bccedge.push_back(tmp);
+                }
+
+                r = min(r, d);
+            }else if (!vis[v] && v != pre){
+                st.push_back({u, v});
+                r = min(r, dfsn[v]);
+            }
+        }
+
+        vis[u] = true;
+        return r;
+    }
+
+    void init(int n){
+        for (int i = 1; i <= n; i++){
+            graph[i].clear();
+            bcc[i].clear();
+            dfsn[i] = -1;
+            vis[i] = false;
+        }
+        bridge.clear();
+        artpoint.clear();
+        bccedge.clear();        
+    }
+
+    void get_bcc(int n){
+        for (int i = 1; i <= n; i++){
+            if (vis[i]) continue;
+            dfs(i, -1);
+        }
+        for (int i = 1; i <= n; i++){
+            sort(all(bcc[i]));
+            bcc[i].erase(unique(all(bcc[i])), bcc[i].end());
+        }
+        for (int i = 1; i <= n; i++){
+            if (bcc[i].size() > 1) 
+                artpoint.push_back(i);
+        }
+        for (auto v : bccedge){
+            if (v.size() == 1)
+                bridge.push_back({min(v[0].first, v[0].second), max(v[0].first, v[0].second)});
+        }
+
+        sort(all(artpoint));
+        sort(all(bridge));
+    }    
+};
 
 // =======================STRING===================
 
@@ -1789,6 +2805,113 @@ void suffix_array(const string &s){
 
 }
 
+struct SA{
+    int n, d;
+    string s;
+    vector<int> sa, pos, lcp, sainv;
+
+    SA (string s_){
+        s = s_;
+        n = s.length();
+        init();
+    }
+
+    bool cmp(int ii, int jj){
+        if (pos[ii] != pos[jj]) return pos[ii] < pos[jj];
+
+        ii += d;
+        jj += d;
+        return (ii < n && jj < n) ? (pos[ii] < pos[jj]) : (ii > jj);
+    }
+    void init(){
+        sa.resize(n);
+        lcp.resize(n);
+        pos.resize(n);
+        sainv.resize(n);
+
+        for (int i = 0; i < n; i++){
+            sa[i] = i;
+            pos[i] = s[i];
+        }
+
+        for (d = 1; ; d *= 2){
+            sort(all(sa), 
+                [&](int ii, int jj) -> bool{
+                    if (pos[ii] != pos[jj]) return pos[ii] < pos[jj];
+
+                    int i2 = ii + d;
+                    int j2 = jj + d;
+                    return (i2 < n && j2 < n) ? (pos[i2] < pos[j2]) : (i2 > j2);
+                }
+            );
+
+            vector<int> tmp(n);
+            
+            for (int i = 0; i < n-1; i++){
+                tmp[i+1] = tmp[i] + cmp(sa[i], sa[i+1]);
+            }
+
+            for (int i = 0; i < n; i++){
+                pos[sa[i]] = tmp[i];
+            }
+
+            if (tmp[n-1] == n-1) break;
+        }
+
+        for (int i = 0, k = 0; i < n; i++, k = max(k-1, 0)){
+            if (pos[i] == n-1) continue;
+
+            for (int j = sa[pos[i]+1]; s[i+k] == s[j+k]; k++);
+
+            lcp[pos[i]] = k;
+        }
+
+        for (int i = 0; i < n; i++){
+            sainv[sa[i]] = i;
+        }
+    }
+};
+
+struct Z{
+    string s;
+    int n;
+    vector<int> z;
+
+    // z[i] = max k s.t. s[i:i+k] == s[0:k]
+
+    void init(string s_){
+        s = s_;
+        n = s.length();
+        z.resize(n);
+
+        int l = 0;
+        int r = 0;
+        z[0] = n;
+
+        for (int i = 1; i < n; i++){
+            if (i > r){
+                l = r = i;
+                while (r < n && s[r-l] == s[r]) r++;
+                z[i] = r-l;
+                r--;
+            }else{
+                int k = i - l;
+                if (z[k] < r-i+1) z[i] = z[k];
+                else{
+                    l = i;
+                    while (r < n && s[r-l] == s[r]) r++;
+                    z[i] = r - l;
+                    r--;
+                }
+            }
+        }
+    }
+
+    int get(int k){
+        return z[k];
+    }
+};
+
 // ======================DATA_STRUCTURE============
 
 // 세그트리
@@ -1844,7 +2967,7 @@ private:
         }
     }
 
-    T f_merge(T lval, T rval){
+    inline T f_merge(T lval, T rval){
         return f(lval, rval);
     }
 
@@ -1873,7 +2996,6 @@ private:
         }
 
         if (start == end){
-            a[index] = val;
             tree[node] = val;
             return;
         }
@@ -1895,6 +3017,64 @@ private:
 
 };
 
+template <class T>
+struct segTree{
+    // 0-BASED
+    vector<T> t;
+    T id;
+    int n;
+
+    segTree(int n_, T id_){
+        n = n_;
+        id = id_;
+        t = vector<T>(n*2, id);
+    }
+
+    inline T merge(T n1, T n2){
+        if (n1.isidentity) return n2;
+        if (n2.isidentity) return n1;
+
+        return Node(
+            max(n1.lsum, n1.sum + n2.lsum),
+            max(n2.rsum, n1.rsum + n2.sum),
+            max(n1.q, max(n1.rsum + n2.lsum, n2.q)),
+            n1.sum + n2.sum
+        );
+    }
+    inline T add(T n1, T n2){
+        if (n1.isidentity) return n2;
+        if (n2.isidentity) return n1;
+
+        Node res(n1.sum + n2.sum, false);
+        return res;
+    }
+
+    void update(int idx, T val){
+        for (t[idx+=n] = val; idx >>= 1; ){
+            t[idx] = merge(t[idx<<1], t[idx<<1|1]);
+        }
+    }
+    void update_diff(int idx, T val){
+        idx += n;
+        t[idx] = add(t[idx], val);
+        for (; idx >>= 1; ){
+            t[idx] = merge(t[idx<<1], t[idx<<1|1]);
+        }
+    }
+
+    T query(int l, int r){
+        // [l, r)        
+        T resl = id;
+        T resr = id;
+        for (l += n, r += n; l < r; l >>= 1, r >>= 1){
+            if (l&1) resl = merge(resl, t[l++]);
+            if (r&1) resr = merge(t[--r], resr); 
+        }
+        return merge(resl, resr);
+    }
+
+};
+
 // 레이지 세그
 template <class T, class S>
 class lazySegTree{
@@ -1905,7 +3085,7 @@ public:
     lazySegTree(vector<T> a_, int n_) : a(a_), n(n_) {
         // change from here
         f_identity = 0;
-        lazy_identity = {-1, -1};
+        lazy_identity = 0;
         // to here
 
         int maxn = getMax(n);
@@ -1937,7 +3117,6 @@ private:
     vector<T> a;
     vector<S> lazy;
     vector<T> tree;
-    function<T(T, T)> f;
 
     int getMax(int n){
         return 4*n;
@@ -1954,31 +3133,18 @@ private:
     }
 
     // change from here to 
-    T T_merge(T lval, T rval){
-        return (lval + rval) % MOD;
+    inline T T_merge(T lval, T rval){
+        return (lval + rval);
     }
 
-    S S_merge(S lval, S rval){
+    inline S S_merge(S lval, S rval){
         // rval acts on lval
 
-        if (lval == lazy_identity) return rval;
-        if (rval == lazy_identity) return lval;
-
-        S tmp = lval;
-        tmp.first *= rval.second;
-        tmp.second *= rval.second;
-        tmp.first += rval.first;
-
-        tmp.first %= MOD;
-        tmp.second %= MOD;
-
-        return tmp;
+        return lval + rval;
     }
 
-    void act(int node, int start, int end, S lazy){
-        tree[node] *= lazy.second;
-        tree[node] += (end - start + 1) * lazy.first;
-        tree[node] %= MOD;
+    inline void act(int node, int start, int end, S lazy){
+        tree[node] += (end - start + 1) * lazy;
     }
     // here
 
@@ -2135,6 +3301,123 @@ private:
 
 };
 
+struct Fenwick{
+    // range sum, point update
+
+    int n;
+    vector<int> tree;
+
+    Fenwick(int n_){
+        n = n_;
+        while (n != (n & -n)){
+            n += n & -n;
+        }
+        tree = vector<int>(n+1);
+    }
+    
+    ll sum(int i){
+        ll res = 0;
+        while (i > 0){
+            res += tree[i];
+            i -= (i & -i);
+        }
+        return res;
+    }
+    ll query(int l, int r){
+        return sum(r) - sum(l-1);
+    }
+    void add(int i, ll val){
+        while (i <= n){
+            tree[i] += val;
+            i += (i & -i);
+        }
+    }
+};
+
+struct Trie{
+    vector<map<string, int> > node;
+
+    Trie(){
+        node.push_back(map<string, int>{});
+    }
+
+    void insert(const vector<string>& v){
+        int idx = 0;
+        for (string s : v){
+            if (node[idx].find(s) == node[idx].end()){
+                node.push_back(map<string, int>());
+                node[idx].insert({s, node.size()-1});
+                idx = node.size()-1;
+            }else{
+                idx = node[idx][s];
+            }
+        }   
+    }
+
+    void print(int idx=0, int lvl=0){
+        for (auto s : node[idx]){
+            for (int i = 0; i < lvl; i++){
+                cout << "--";
+            }
+            cout << s.first << '\n';
+            print(s.second, lvl+1);
+        }
+    }
+};
+
+struct BinaryTrie{
+    const int SZ = 32;
+    struct Node{
+        int sz[2], idx[2];
+
+        Node(){
+            for (int i = 0; i < 2; i++){
+                sz[i] = 0;
+                idx[i] = -1;
+            }
+        }
+    };
+    vector<Node> node;
+
+    BinaryTrie(){
+        node.push_back(Node());
+    }
+
+    void insert(ll n){
+        int idx = 0;
+
+        for (int j = 0; j < SZ; j++){
+            int k = (n & (1LL << (SZ-j-1))) > 0;
+
+            if (node[idx].idx[k] == -1){
+                node.push_back(Node());
+                node[idx].sz[k]++;
+                node[idx].idx[k] = node.size()-1;
+                idx = node.size()-1;
+            }else{
+                node[idx].sz[k]++;
+                idx = node[idx].idx[k];
+            }
+        }
+    }
+
+    ll maxxor(ll n){
+        ll res = 0;
+        int idx = 0;
+        for (int j = 0; j < SZ; j++){
+            int k = (n & (1LL << (SZ-j-1))) > 0;
+
+            if (node[idx].idx[1-k] == -1){
+                idx = node[idx].idx[k];
+            }else{
+                res += (1LL << (SZ-j-1));
+                idx = node[idx].idx[1-k];
+            }
+        }
+
+        return res;
+    }
+};
 
 // ============================MISC================
 vector<ll> value_compression(const vector<ll> &v){
@@ -2146,7 +3429,7 @@ vector<ll> value_compression(const vector<ll> &v){
 
     sort(all(w),
         [](pll p1, pll p2) -> bool{
-            return p1.second <= p2.second;
+            return p1.second < p2.second;
         }
     );
 
