@@ -168,6 +168,60 @@ def inv(a, MOD):
     inva = [[b[i][j+n] for j in range(n)] for i in range(n)]
     return inva
 
+def getbasis(a, MOD):
+    n = len(a)
+    m = len(a[0])
+
+    A = transpose(deepcopy(a))
+    b = deepcopy(a)
+
+    # j = 0
+    r = 0
+
+    # print(b)
+    # print(A)
+
+    for j in range(m):
+
+        for i in range(r, n):
+            if b[i][j]:
+                b[i], b[r] = b[r], b[i]
+                break
+
+        if r < n and b[r][j]:
+            B = b[r][j]
+            for k in range(m):
+                b[r][k] *= pow(B, -1, MOD)
+                b[r][k] %= MOD
+
+            for i in range(n):
+                if i != r:
+                    B = b[i][j]
+                    for k in range(m):
+                        b[i][k] += b[r][k]*(MOD-B)
+                        b[i][k] %= MOD
+
+            r += 1
+        else:
+            for k in range(n):
+                b[k][j] = 0
+        # j += 1
+
+    #     print(r, j)
+    #     for p in b:
+    #         print(p)
+    #     print()
+    # print(b)
+
+    basis = []
+    for i in range(n):
+        for j in range(m):
+            if b[i][j]:
+                basis.append(tuple(A[j]))
+    # print(basis)
+    return [list(a) for a in basis]
+
+
 def Hessenberg(m, mod=0):
     # m in n by n matrix
     # find upper Hessenberg matrix
@@ -288,26 +342,12 @@ def gcd(a, b):
     while b != 0:
         a, b = b, a%b
     return a
-def power(x, y, mod=0):
-    res = 1
-    while y != 0:
-        if y % 2 == 1:
-            res *= x
-            if mod:
-                res %= mod
-        y //= 2
-        x *= x
-        if mod:
-            x %= mod
-    if mod:
-        res %= mod
-    return res
 def miller(n, a):
     if a % n == 0:
         return True
     k = n - 1
     while True:
-        temp = power(a, k, n)
+        temp = pow(a, k, n)
         if temp == n - 1:
             return True
         if k % 2 == 1:
@@ -372,6 +412,21 @@ def factorization(n):
     c.sort()
 
     return c
+def getDiv(n):
+    f = factorization(n)
+    div = set()
+    div.add(1)
+
+    for [k, v] in f:
+        tmp = [k**i for i in range(v+1)]
+        newdiv = set()
+
+        for d in div:
+            for mult in tmp:
+                newdiv.add(d * mult)
+        
+        div = newdiv
+    return div
 def phi(n):
     # with pollard_rho
     fact = factorization(n)
@@ -406,7 +461,7 @@ def merge_fact(a, b):
 
 def mod_inverse(x, mod):
     # Suppose x % mod != 0
-    return power(x, mod-2, mod)
+    return pow(x, -1, mod)
 def power_tower_solve(a, n, mod):
     # calculate a[0]^(a[1]^...) % mod
     # n = len(a)
@@ -532,7 +587,7 @@ def fact_mod_prime(n, p):
     # this method is useful when p is small
 
     # calculating n! % p
-    # n! = M p + r
+    # n! = p^M r
     # r < p
     # return [M, r]
 
@@ -543,7 +598,7 @@ def fact_mod_prime(n, p):
         return[0, fact[n]]
 
     k, r = n // p, n % p
-    K = fact_mod_prime(k)
+    K = fact_mod_prime(k, p)
 
     mod = p
     k_, r_ = n // mod, n % mod
@@ -559,7 +614,7 @@ def fact_mod_prime(n, p):
 def comb_mod_prime(n, k, p):
     # calculating nCk % p
     # returns [k, m] such that
-    # nCk = p*k + m
+    # nCk = p^k m
     # 0 <= m < p
 
     a = fact_mod_prime(n, p)
@@ -575,7 +630,7 @@ def comb_mod_prime(n, k, p):
 def fact_mod_primetower(n, p, e):
     # this method is useful when p is small
 
-    # n! = M p^e + r
+    # n! = (p^e)^M r
     # r < p^e
     # return [M, r]
 
@@ -631,6 +686,28 @@ def factorial(n, mod):
         ans %= mod
 
     return ans
+
+def lcs(s, t):
+    l1 = len(s)
+    l2 = len(t)
+
+    dp = [[0 for _ in range(l2+1)] for __ in range(l1+1)]
+    for i in range(1, l1+1):
+        for j in range(1, l2+1):
+            dp[i][j] = max([dp[i-1][j-1], dp[i-1][j], dp[i][j-1]])
+            if s[i-1] == t[j-1]:
+                dp[i][j] = max(dp[i][j], dp[i-1][j-1] + 1)
+    
+    lcs_str = []
+    jj = l2
+    for i in range(l1, 0, -1):
+        for j in range(jj, 0, -1):
+            if dp[i][j-1] == dp[i-1][j] == dp[i-1][j-1] == dp[i][j] - 1:
+                lcs_str.append(t[j-1])
+                jj = j
+                break
+    
+    return [dp[l1][l2], "".join(lcs_str[::-1])]
 
 def leap_year(year):
     return year % 400 == 0 or (year % 4 == 0 and year % 100)
@@ -710,7 +787,7 @@ def farey(n, K):
 def order(n, g):
     # return order of g in Zn
     phin = phi(n)
-    fact = factorization(n)
+    fact = factorization(phin)
     ans = phin
 
     for [p, k] in fact:
@@ -745,10 +822,22 @@ def carmichael_function(n):
         return ans
 
 def modular_sqrt(p, n):
+    # if p = 4k+3
+    # then \pm n^{k+1} is modular sqrt
+
     # find x s.t. x^2 = n (mod p) in O(log p^2)
     # p is odd prime
-    # assume such x exists
+
+    # O(log^2 p)
+
+    if pow(n, (p-1)//2, p) == p-1:
+        print("No modulo sqrt exists")
+        assert False
     
+    if p % 4 == 3:
+        k = (p-3) // 4
+        return pow(n, k+1, p)
+
     if n == 0:
         return 0
     
@@ -787,6 +876,46 @@ def modular_sqrt(p, n):
         t = (t*b*b)%p
         R = (R*b)%p
 
+def extgcd(a, b):
+    # return [g, x, y] s.t. ax + by = gcd(a, b) = g
+
+    if b == 0:
+        return [a, 1, 0]
+    g, x, y = extgcd(b, a%b)
+    return [g, y, x - a//b * y]
+def crt2(p1, p2):
+    # x = p1[1] (mod p1[0])
+    # x = p2[1] (mod p2[0])
+
+    A, a = p1
+    B, b = p2
+
+    if a == -1:
+        # no solution
+        return [-1, -1]
+    
+    from math import gcd
+
+    g = gcd(A, B)
+    if a % g != b % g:
+        return [-1, -1]
+
+    g, u, v = extgcd(A, B)
+    # uA + vB = g (mod AB)
+
+    x = a*v*B + b*u*A
+    x //= g
+    x %= (A*B)//g
+
+    return [(A*B)//g, x]
+def crt(a):
+    n = len(a)
+
+    cur = a[0]
+    for i in range(1, n):
+        cur = crt2(cur, a[i])
+    return cur
+   
 
 def f(a):
     b = {}
@@ -798,6 +927,7 @@ def f(a):
 
     c = [[i, b[i]] for i in b.keys()]
     return c
+
 
 def ccw(p1, p2, p3):
     op = p1[0]*p2[1] + p2[0]*p3[1] + p3[0]*p1[1]
@@ -818,6 +948,130 @@ def isIntersect(p1, p2, p3, p4):
         return not comp(p3, p2) and not comp(p1, p4)
 
     return ab <= 0 and cd <= 0
+def getIntersect(p1, p2, p3, p4):
+    # [p1, p2] and [p3, p4] intersect
+
+    if comp(p1, p2):
+        p1, p2 = p2, p1
+    if comp(p3, p4):
+        p3, p4 = p4, p3
+    
+    if (p4[0]-p3[0])*(p2[1]-p1[1]) == (p2[0]-p1[0])*(p4[1]-p3[1]):
+        if p1 == p4:
+            return p1
+        elif p2 == p3:
+            return p2
+    else:
+        if p3[0] != p4[0]:
+            x = F(p1[0]*(p3[1]-p4[1]) + p3[0]*(p4[1]-p1[1]) + p4[0]*(p1[1]-p3[1]),
+                  (p1[0]-p2[0])*(p3[1]-p4[1]) + p3[0]*(p2[1]-p1[1]) + p4[0]*(p1[1]-p2[1]))
+            
+            return [p1[0] + (p2[0]-p1[0])*x, p1[1] + (p2[1]-p1[1])*x]
+        else:
+            x = F(p1[0]-p4[0], p1[0]-p2[0])
+            return [p1[0] + (p2[0]-p1[0])*x, p1[1] + (p2[1]-p1[1])*x]
+
+
+def convexhull(v):
+    n = len(v)
+    k = 0
+
+    if n < 3:
+        return v
+    
+    ans = [[] for _ in range(2*n)]
+    v.sort()
+    
+    for i in range(n):
+        while k >= 2 and ccw(ans[k-2], ans[k-1], v[i]) < 0:
+            k -= 1
+        ans[k] = v[i]
+        k += 1
+    t = k + 1
+    for i in range(n-1, 0, -1):
+        while k >= t and ccw(ans[k-2], ans[k-1], v[i-1]) < 0:
+            k -= 1
+        ans[k] = v[i-1]
+        k += 1
+
+    ans = ans[:k-1]
+    return ans
+
+def bfs(s, t):
+    parent = [-1 for _ in range(n)]
+    parent[s] = -2
+
+    Q = deque()
+    Q.append([s, pow(3, 2001)])
+
+    while Q:
+        cur, flow = Q.popleft()
+        # print(cur, flow)
+
+        for nxt in graph[cur]:
+            if parent[nxt] == -1 and capacity[cur][nxt]:
+                parent[nxt] = cur
+                new_flow = min(flow, capacity[cur][nxt])
+
+                if nxt == t:
+                    return [new_flow, parent]
+                
+                Q.append([nxt, new_flow])
+    return [0, []]  
+def maxflow(s, t):
+    flow = 0
+    
+    while True:
+        new_flow, parent = bfs(s, t)
+        if new_flow == 0:
+            break
+
+        flow += new_flow
+        cur = t
+
+        # print(parent)
+
+        while cur != s:
+            prev = parent[cur]
+            capacity[prev][cur] -= new_flow
+            capacity[cur][prev] += new_flow
+            cur = prev
+    
+    return flow
+
+class Seg:
+    t = []
+    id = 0
+    n = 0
+
+    def __init__(self, n_, id_):
+        self.n = n_
+        self.id = id_
+        self.t = [self.id for i in range(2*self.n)]
+    
+    def update_diff(self, idx, val):
+        idx += self.n 
+        self.t[idx] += val
+        idx >>= 1
+        while idx:
+            # print(idx, 2*n)
+            self.t[idx] = self.t[idx<<1] + self.t[(idx<<1)|1]
+            idx >>= 1
+    def query(self, l, r):
+        resl = 0
+        resr = 0
+        l += self.n
+        r += self.n
+        while l < r:
+            if l & 1:
+                resl += self.t[l]
+                l += 1
+            if r & 1:
+                r -= 1
+                resr += self.t[r]
+            l >>= 1
+            r >>= 1
+        return resl+resr
 
 def distance2D(p1, p2):
     # p1 : [x, y]
@@ -1037,7 +1291,7 @@ def print_mabangjin(ans):
     for i in ans:
         print(" ".join(map(str, i)))
 
-def count_lattice(k : Fraction, b: Fraction, n):
+def count_lattice(k : Fraction, b: Fraction, n : int):
     if k < 0 or b < 0:
         count_lattice(-k, b + b.__abs__().__ceil__(), n)
     # count # of lattice point under
