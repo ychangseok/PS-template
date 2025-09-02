@@ -585,11 +585,10 @@ def poly_div(p1, p):
 
 def fact_mod_prime(n, p):
     # this method is useful when p is small
+    # O(log n)
 
-    # calculating n! % p
     # n! = p^M r
-    # r < p
-    # return [M, r]
+    # return [M, r%p]
 
     # fact[i] = i! % p
     # i < p
@@ -600,45 +599,38 @@ def fact_mod_prime(n, p):
     k, r = n // p, n % p
     K = fact_mod_prime(k, p)
 
-    mod = p
-    k_, r_ = n // mod, n % mod
+    k_, r_ = n // p, n % p
     m_ = fact[r_]
     if k_ % 2 == 1:
-        m_ = mod - m_
+        m_ = p - m_
 
     m = m_ * K[1]
-    m %= mod
+    m %= p
 
     k += K[0]
     return [k, m]
 def comb_mod_prime(n, k, p):
-    # calculating nCk % p
-    # returns [k, m] such that
-    # nCk = p^k m
-    # 0 <= m < p
+    # nCk = p^M r
+    # return [M, r % p]
 
     a = fact_mod_prime(n, p)
     b = fact_mod_prime(k, p)
     c = fact_mod_prime(n-k, p)
-    mod = p
 
     t = a[0] - b[0] - c[0]
-    n = a[1] * pow(b[1], 17, mod) * pow(c[1], 17, mod)
+    n = a[1] * pow(b[1], -1, p) * pow(c[1], -1, p)
 
     return [t, n]
 
 def fact_mod_primetower(n, p, e):
     # this method is useful when p is small
+    # O(p^e + log n)
 
-    # n! = (p^e)^M r
-    # r < p^e
-    # return [M, r]
+    # n! = p^M r
+    # return [M, r % p^e]
 
-    # fact[i] = i! % p
-    # i < p
-
-    # val[i] = (\prod_{(n, p) = 1, n \in [1, i]} n) % p^e
-    # 0 <= i < p^e
+    # fact[i] = i! % p, i < p
+    # val[i] = (\prod_{(n, p) = 1, n \in [1, i]} n) % p^e, i < p^e
 
     if n < p:
         return[0, fact[n]]
@@ -658,17 +650,18 @@ def fact_mod_primetower(n, p, e):
     k += K[0]
     return [k, m]
 def comb_mod_primetower(n, k, p, e):
-    # nCk % p^e
+    # nCk = p^M r
+    # return [M, r % p^e]
     a = fact_mod_primetower(n, p, e)
     b = fact_mod_primetower(k, p, e)
     c = fact_mod_primetower(n-k, p, e)
     mod = p**e
 
     t = a[0] - b[0] - c[0]
-    n = a[1] * pow(b[1], 17, mod) * pow(c[1], 17, mod)
+    n = a[1] * pow(b[1], -1, mod) * pow(c[1], -1, mod) % mod
 
-    ans = pow(p, t, mod)*n
-    return ans % mod
+    return [t, n]
+
 
 def d_n(n, mod):
     # derangement
@@ -927,7 +920,18 @@ def f(a):
 
     c = [[i, b[i]] for i in b.keys()]
     return c
+def compress(a):
+    l = len(a)
+    b = [[a[i], i] for i in range(l)]
+    b.sort()
 
+    c = [1 for i in range(l)]
+    idx = 1
+    for i in range(1, l):
+        if b[i][0] != b[i-1][0]:
+            idx += 1
+        c[b[i][1]] = idx
+    return c
 
 def ccw(p1, p2, p3):
     op = p1[0]*p2[1] + p2[0]*p3[1] + p3[0]*p1[1]
