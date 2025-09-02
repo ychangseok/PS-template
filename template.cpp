@@ -312,7 +312,7 @@ public:
             }
 
             if (A[{r, j}]){
-                A.rmul(r,  pow(A[{r, j}], mod-2, mod), mod);
+                A.rmul(r,  power(A[{r, j}], mod-2, mod), mod);
 
                 for (int i = r+1; i < n; i++){
                     A.radd(i, r, mod-A[{i, j}], mod);
@@ -665,18 +665,17 @@ ll phi(ll n){
 	}
 	return ans;
 }
-ll power(ll x, ll y, ll mod){
+ll power(ll x, ll y){
+    if (y == -1) return power(x, MOD-2);
 	ll res = 1;
 	while (y){
 		if (y % 2 == 1){
-			res *= x;
-			res %= mod;
+			res = res * x % MOD;
 		}
 		y /= 2;
-		x *= x;
-		x %= mod;
+        x = x * x % MOD;
 	}
-	res %= mod;
+	res %= MOD;
 	return res;
 }
 ll gcd(ll x, ll y){
@@ -839,7 +838,7 @@ void ntt(vector<ll> &P, bool inverse, ll g, const ll mod){
     }
 }
 // 비재귀
-void ntt(vector<ll> &P, bool inverse, ll g, const ll mod){
+void ntt(vector<ll> &P, bool inverse, ll g){
     int n = P.size();
     if (n == 1) return;
 
@@ -857,8 +856,8 @@ void ntt(vector<ll> &P, bool inverse, ll g, const ll mod){
     for (int i = 1; i < n; i <<= 1){
         // n = 2*i에서 ntt
 
-        ll unit = power(g, n/(2*i), mod);
-        if (inverse) unit = power(unit, mod-2, mod);
+        ll unit = power(g, n/(2*i));
+        if (inverse) unit = power(unit, MOD-2);
 
         for (int j = 0; j < n; j += i << 1){
 
@@ -868,23 +867,23 @@ void ntt(vector<ll> &P, bool inverse, ll g, const ll mod){
                 // a[j+k] <- x + wy
                 // a[i+j+k] <- x - wy
 
-                ll tmp = (P[i+j+k] * w) % mod;
-                P[i+j+k] = P[j+k] + mod - tmp;
+                ll tmp = (P[i+j+k] * w) % MOD;
+                P[i+j+k] = P[j+k] + MOD - tmp;
                 P[j+k] += tmp;
                 w *= unit;
-                P[i+j+k] %= mod;
-                P[j+k] %= mod;
-                w %= mod;
+                P[i+j+k] %= MOD;
+                P[j+k] %= MOD;
+                w %= MOD;
             }
         }
     }
 
 
     if (inverse){
-        ll invn = power(n, mod-2, mod);
+        ll invn = power(n, MOD-2);
         for (int i = 0; i < n; i++){
             P[i] *= invn;
-            P[i] %= mod;
+            P[i] %= MOD;
         }
     }
 }
@@ -937,6 +936,17 @@ vector<ll> solve(const vector<vector<ll> > &v, int left, int right){
 
     return polymul(v1, v2);
 }
+vector<ll> polypower(vector<ll> v1, ll k){
+    vector<ll> res{1};
+    while (k){
+        if (k % 2){
+            res = polymul(res, v1);
+        }
+        v1 = polymul(v1, v1);
+        k /= 2;
+    }
+    return res;
+}
 
 ll crt(int n, const vector<ll> &a, const vector<ll> &p){
 	// n = a.size() = p.size()
@@ -956,13 +966,14 @@ ll crt(int n, const vector<ll> &a, const vector<ll> &p){
 
 	return res;
 }
+
 //========================NEW GEOMETRY=========================
 
 template <class T>
 struct P2{
     T x, y;
 
-    P2 (ll x_=0, ll y_=0){
+    P2 (T x_=0, T y_=0){
         x = x_;
         y = y_;
     }
@@ -975,14 +986,15 @@ struct P2{
     P2 r90() { return P2(y, -x);}
     T operator^ (const P2 &p) const{ return x*p.y-y*p.x;}
     T size() { return x*x+y*y;}
-    bool operator< (const P2 &p) const{ return pll{x, y} < pll{p.x, p.y};}
-    bool operator> (const P2 &p) const{ return pll{x, y} > pll{p.x, p.y};}
-    bool operator<= (const P2 &p) const{ return pll{x, y} <= pll{p.x, p.y};}
-    bool operator>= (const P2 &p) const{ return pll{x, y} >= pll{p.x, p.y};}
+    bool operator< (const P2 &p) const{ return pair<T, T>{x, y} < pair<T, T>{p.x, p.y};}
+    bool operator> (const P2 &p) const{ return pair<T, T>{x, y} > pair<T, T>{p.x, p.y};}
+    bool operator<= (const P2 &p) const{ return pair<T, T>{x, y} <= pair<T, T>{p.x, p.y};}
+    bool operator>= (const P2 &p) const{ return pair<T, T>{x, y} >= pair<T, T>{p.x, p.y};}
     bool operator== (const P2 &p) const{ return x==p.x && y==p.y;}
 };
 using PT = P2<ll>;
-using polygon = vector<P2<ll>>;
+using polygon = vector<PT>;
+PT O = PT();
 
 struct P3{
     lb x, y, z;
@@ -1021,7 +1033,44 @@ bool isIntersect(PT A, PT B, PT C, PT D){
 	return ab <= 0 && cd <= 0;
 }
 
-bool PointInConvexPolygon(const polygon &v, const PT&p){
+polygon convex_hull(polygon v){
+    // monotone chain
+
+    int n = v.size();
+    int k = 0;
+
+    if (n < 3) return v;
+
+    polygon ans(2*n);
+
+    sort(all(v),
+        [](const PT &p1, const PT &p2) -> bool{
+            if (p1.x == p2.x) return p1.y < p2.y;
+            return p1.x < p2.x;
+        }
+    );
+    
+    for (int i = 0; i < n; i++){
+        while (k >= 2 && ccw(ans[k-2], ans[k-1], v[i]) <= 0){
+            k--;
+        }
+        ans[k] = v[i];
+        k++;
+    }
+
+    for (int i = n- 1, t = k + 1; i > 0; i--){
+        while (k >= t && ccw(ans[k-2], ans[k-1], v[i-1]) <= 0){
+            k--;
+        }
+        ans[k] = v[i-1];
+        k++;
+    }
+
+    ans.resize(k-1);
+    return ans;
+}
+
+bool PointInConvexPolygon(const polygon &v, const PT &p){
 	// https://github.com/justiceHui/icpc-teamnote/blob/master/code/Geometry/PointInConvexPolygon.cpp
 	// v : counterclockwise
 
@@ -1044,6 +1093,16 @@ bool PointInConvexPolygon(const polygon &v, const PT&p){
 	}
 	return ccw(v[0], v[l], p) >= 0 && ccw(v[l], v[l+1], p) >= 0 && ccw(v[l+1], v[0], p) >= 0;
 }
+
+// 360 degree ccw angle sort centered on p
+sort(all(pts),
+    [&p](const PT &p1, const PT &p2) -> bool{
+        if (p2 == p) return false;
+        if (p1 == p) return true;
+        if (p1 > p != p2 > p) return p1 < p2;
+        return ccw(p, p1, p2) > 0;
+    }
+);
 
 void reorder(polygon &P){
     int pos = 0;
@@ -1080,6 +1139,73 @@ polygon minkowski_sum (polygon P, polygon Q){
         if (crs <= 0 && j < qsz) j++;
     }
 
+    return res;
+}
+
+struct Line{
+    PT p, d, p2;
+
+    Line(PT a, PT b){
+        p = a;
+        p2 = b;
+        d = b - a;
+    }
+};
+bool line_intersect(const PT &s1, const PT &e1, const PT &s2, const PT &e2, PT &v){
+    PT v1 = e1 - s1;
+    PT v2 = e2 - s2;
+    lb det = v1 ^ v2;
+    if (det == 0) return false;
+    lb s = ((s2-s1)^v2) / (v1 ^ v2);
+    v = s1 + v1 * s;
+    return true;
+}
+polygon HPI(vector<Line>& lines){
+    auto bad = [](const Line &a, const Line &b, const Line &c){
+        PT v;
+        if (!line_intersect(a.p, a.p2, b.p, b.p2, v)) return false;
+        lb cross = c.d^(v-c.p);
+        return cross <= 0;
+    };
+
+    sort(all(lines),
+        [](const Line &l1, const Line &l2) -> bool{
+            if (l1.d < O != l2.d < O) return l1.d < l2.d;
+            return (l1.d^l2.d) > 0;
+        }
+    );
+
+    deque<Line> dq;
+
+    for (auto line : lines){
+        while (dq.size() >= 2 && bad(dq[dq.size()-2], dq.back(), line))
+            dq.pop_back();
+
+        while (dq.size() >= 2 && bad(dq[0], dq[1], line))
+            dq.pop_front();
+        
+        if (dq.empty()) dq.push_back(line);
+        else if ((dq.back().d ^ line.d) == 0){
+            if ((dq.back().d * line.d) < 0){
+                // inter is zero
+                return polygon();
+            }else if (((line.p-dq.back().p)^dq.back().d) < 0){
+                dq.pop_back();
+                dq.push_back(line);
+            }
+        }else if (dq.size() < 2 || !bad(dq.back(), line, dq[0]))
+            dq.push_back(line);
+    }
+
+    polygon res;
+    if (dq.size() >= 3){
+        for (int i = 0; i < dq.size(); i++){
+            int j = (i+1)%dq.size();
+            PT v;
+            if (!line_intersect(dq[i].p, dq[i].p2, dq[j].p, dq[j].p2, v)) continue;
+            res.push_back(v);
+        }
+    }
     return res;
 }
 
@@ -1716,6 +1842,92 @@ vector<ll> dijkstra(int start){
     return dist;
 }
 
+vector<int> eulerian_path(){
+    int v1 = -1, v2 = -1;
+    vector<int> res;
+
+    for (int i = 1; i <= 2*n; i++){
+        if (deg[i] & 1){
+            if (v1 == -1) v1 = i;
+            else if (v2 == -1) v2 = i;
+            else return res;
+        }
+    }
+
+    if (v1 != -1){
+        g[v1].insert(v2);
+        g[v2].insert(v1);
+        deg[v1]++;
+        deg[v2]++;
+    }
+
+    int first = 0;
+    for (int i = 1; i <= 2*n; i++){
+        if (deg[i]){
+            first = i;
+            break;
+        }
+    }
+    if (v1 != -1) first = v1;
+
+    if (first == 0) return res;
+
+    // cout << first << ' ' << v1 << ' ' << v2 << endl;
+
+    stack<int> st;
+    st.push(first);
+
+    while (!st.empty()){
+        int v = st.top();
+        
+        if (g[v].empty()){
+            res.push_back(v);
+            st.pop();
+        }else{
+            int i = (*g[v].begin());
+            g[v].erase(g[v].find(i));
+            g[i].erase(g[i].find(v));
+            st.push(i);
+        }
+    }
+
+    if (v1 != -1){
+        for (int i = 0; i+1 < res.size(); i++){
+            if (res[i] == v1 && res[i+1] == v2){
+                vector<int> res2;
+                for (int j = i+1; j < res.size(); j++){
+                    res2.push_back(res[j]);
+                }
+                for (int j = 1; j <= i; j++){
+                    res2.push_back(res[j]);
+                }
+                res = res2;
+                break;
+            }
+            if (res[i] == v2 && res[i+1] == v1){
+                vector<int> res2;
+                for (int j = i+1; j < res.size(); j++){
+                    res2.push_back(res[j]);
+                }
+                for (int j = 1; j <= i; j++){
+                    res2.push_back(res[j]);
+                }
+                res = res2;
+                break;
+            }
+        }
+    }
+
+    for (int i = 1; i <= 2*n; i++){
+        if (g[i].size()){
+            res.clear();
+            return res;
+        }
+    }
+
+    return res;
+}
+
 struct UF{
     vector<int> par, sz;
     int n;
@@ -1747,17 +1959,20 @@ struct UF{
         par[v] = u;
         sz[u] += sz[v];
     }
+    int getsz(int u){
+        return sz[get(u)];
+    }
     bool same(int u, int v){
         return get(u) == get(v);
     }
 };
 
 struct UFrollback{
-    vector<int> par, sz;
+    vector<int> par, sz, rank;
     int n;
 
     struct info{
-        int u, v, pu, pv, szu, szv;
+        int u, v, pu, pv, szu, szv, ru, rv;
     };
     vector<info> trace;
     
@@ -1765,6 +1980,7 @@ struct UFrollback{
         n = n_;
         par.resize(n+1);
         sz.resize(n+1);
+        rank.resize(n+1);
         init();
         trace.clear();
     }
@@ -1773,38 +1989,44 @@ struct UFrollback{
         for (int i = 1; i <= n; i++){
             par[i] = i;
             sz[i] = 1;
+            rank[i] = 0;
         }
     }
     int get(int u){
         if (u == par[u]) return u;
-        return par[u] = get(par[u]);
+        return get(par[u]);
     }
-    void merge(int u, int v){
+    void merge(int u, int v, bool perm=false){
         u = get(u);
         v = get(v);
 
         if (u == v) return;
-        if (u > v) swap(u, v);
+        if (rank[v] > rank[u]) swap(u, v);
 
-        trace.push_back({u, v, par[u], par[v], sz[u], sz[v]});
+        if (!perm) trace.push_back({u, v, par[u], par[v], sz[u], sz[v], rank[u], rank[v]});
 
         par[v] = u;
         sz[u] += sz[v];
+        rank[u] = max(rank[u], rank[v] + 1);
+    }
+    int getsz(int u){
+        return sz[get(u)];
     }
     bool same(int u, int v){
         return get(u) == get(v);
     }
 
     void rollback(int SZ=0){
-        while (trace.size() != SZ){
+        while (trace.size() > SZ){
             info cur = trace.back();
 
             int u = cur.u;
             int v = cur.v;
-            par[u] = cur.pu;
+            // par[u] = cur.pu;
             par[v] = cur.pv;
             sz[u] = cur.szu;
-            sz[v] = cur.szv;
+            rank[u] = cur.ru;
+            // sz[v] = cur.szv;
 
             trace.pop_back();
         }
@@ -2127,6 +2349,12 @@ struct SCC{
     int id;
     vector<vector<int> > SCCList;
     stack<int> st;
+    int n;
+
+    SCC (int n_){
+        n = n_;
+        init(n);
+    }
 
     void addEdge(int u, int v){
         graph[u].push_back(v);
@@ -3334,6 +3562,70 @@ struct Fenwick{
     }
 };
 
+struct LiChaoTree{
+    struct Line{
+        ll a, b;
+        ll get(ll x){
+            return a*x+b;
+        }
+    };
+    struct Node{
+        int l, r;
+        ll s, e;
+        Line line;
+    };
+
+    const ll INF = 1e18;
+    const Line id = {0, INF};
+    
+    vector<Node> tree;
+
+    void init(ll s, ll e){
+        tree.push_back({-1, -1, s, e, id});
+    }
+
+    void update(int node, Line v){
+        ll s = tree[node].s;
+        ll e = tree[node].e;
+        ll m = (s + e) / 2;
+
+        Line low = tree[node].line;
+        Line high = v;
+        if (low.get(s) > high.get(s)) swap(low, high);
+
+        if (low.get(e) <= high.get(e)){
+            tree[node].line = low;
+            return;
+        }
+
+        if (low.get(m) < high.get(m)){
+            tree[node].line = low;
+            if (tree[node].r == -1){
+                tree[node].r = tree.size();
+                tree.push_back({-1, -1, m+1, e, id});
+            }
+            update(tree[node].r, high);
+        }else{
+            tree[node].line = high;
+            if (tree[node].l == -1){
+                tree[node].l = tree.size();
+                tree.push_back({-1, -1, s, m, id});
+            }
+            update(tree[node].l, low);
+        }
+    }
+    ll query(int node, ll x){
+        if (node == -1) return INF;
+
+        ll s = tree[node].s;
+        ll e = tree[node].e;
+        ll m = (s + e) / 2;
+
+        if (x <= m) return min(tree[node].line.get(x), query(tree[node].l, x));
+        else return min(tree[node].line.get(x), query(tree[node].r, x));
+    }
+};
+
 struct Trie{
     vector<map<string, int> > node;
 
@@ -3586,7 +3878,7 @@ void makeMatrix(node* head){
 	for (int i = 0; i <= ROW; i++){
 		for (int j = 0; j < COL; j++){			
 			if (p[i][j]){
-				insertNode(i, j);
+				insertNode(i, j);vvv
 			}
 		}
 	}
