@@ -1622,5 +1622,5 @@ num = [
 ]
 
 import random
-print(chr(97 + random.randint(0, 25)))
+print(chr(97 + random.randint(0, 25))) 
 
