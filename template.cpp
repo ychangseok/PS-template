@@ -3713,14 +3713,14 @@ struct BinaryTrie{
 
 // ============================MISC================
 vector<ll> value_compression(const vector<ll> &v){
-    vector<pll> w;
+    vector<pair<ll, ll>> w;
     int n = v.size();
     for (int i = 0; i < n; i++){
         w.push_back({i, v[i]});
     }
 
     sort(all(w),
-        [](pll p1, pll p2) -> bool{
+        [](pair<ll, ll> p1, pair<ll, ll> p2) -> bool{
             return p1.second < p2.second;
         }
     );
@@ -3741,7 +3741,7 @@ vector<ll> value_compression(const vector<ll> &v){
     }
 
     sort(all(w),
-        [](pll p1, pll p2) -> bool{
+        [](pair<ll, ll> p1, pair<ll, ll> p2) -> bool{
             return p1.first < p2.first;
         }
     );
