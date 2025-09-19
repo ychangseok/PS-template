@@ -1297,7 +1297,7 @@ def print_mabangjin(ans):
 
 def count_lattice(k : Fraction, b: Fraction, n : int):
     if k < 0 or b < 0:
-        count_lattice(-k, b + b.__abs__().__ceil__(), n)
+        return count_lattice(-k, b + b.__abs__().__ceil__(), n)
     # count # of lattice point under
     # y = kx + b, 0 <= x < n, y > 0
 
@@ -1318,6 +1318,26 @@ def count_lattice(k : Fraction, b: Fraction, n : int):
     if ft >= 1:
         cnt += count_lattice(1/k, (t-ft)/k, ft)
     return cnt
+
+def floor_sum(n, m, a, b):
+    # sum of (a*i+b)//m for i in range(n)
+
+    # print(n, m, a, b)
+
+    ans = 0
+    if a >= m:
+        ans += (a//m)*n*(n-1)//2
+        a %= m
+    if b >= m:
+        ans += (b//m)*n
+        b %= m
+    
+    if a == 0: return ans+n*(b//m)
+
+    k = (a*(n-1)+b)//m
+    ans += k*n
+    ans -= floor_sum(k, a, m, m-b+a-1)
+    return ans
 
 # O(sqrt{n}) methods
 def prime(n):
