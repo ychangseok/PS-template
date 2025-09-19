@@ -2898,6 +2898,56 @@ struct sjh1224BCC{
     }    
 };
 
+
+inline bool check(const vector<vector<int>> &prefer, int w, int pm, int m){
+    int n = prefer[0].size();
+
+    for (int m2 : prefer[w+n-1]){
+        if (m2 == m) return true;
+        if (m2 == pm) return false;
+    }
+}
+vector<int> stable_marriage(const vector<vector<int>> &prefer){
+    // Gale-Shapley, O(n^2)
+    // 1-index for both man and women
+    
+    int n = prefer[0].size();
+
+    vector<int> mpartner(n+1, -1);
+    vector<int> wpartner(n+1, -1);
+    vector<bool> free(n+1, false);
+    int freecnt = n;
+
+    while (freecnt){
+        int m = 1;
+        for (m = 1; m <= n; m++){
+            if (!free[m]) break;
+        }
+
+        for (int w : prefer[m-1]){
+            if (wpartner[w] == -1){
+                wpartner[w] = m;
+                mpartner[m] = w;
+                free[m] = true;
+                freecnt--;
+                break;
+            }else{
+                int m1 = wpartner[w];
+                if (check(prefer, w, m1, m)){
+                    wpartner[w] = m;
+                    mpartner[m1] = -1;
+                    mpartner[m] = w;
+                    free[m] = true;
+                    free[m1] = false;
+                    break;
+                }
+            }
+        }
+    }
+
+    return mpartner;
+}
+
 // =======================STRING===================
 
 vector<int> kmp(string s, string t){
