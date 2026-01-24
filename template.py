@@ -414,18 +414,17 @@ def factorization(n):
     return c
 def getDiv(n):
     f = factorization(n)
-    div = set()
-    div.add(1)
+    div = []
 
-    for [k, v] in f:
-        tmp = [k**i for i in range(v+1)]
-        newdiv = set()
+    P = [a[0] for a in f]
+    E = [range(a[1]+1) for a in f]
 
-        for d in div:
-            for mult in tmp:
-                newdiv.add(d * mult)
-        
-        div = newdiv
+    for exps in product(*E):
+        d = 1
+        for (p, e) in zip(P, exps):
+            d *= p**e 
+        div.append(d)
+    
     return div
 def phi(n):
     # with pollard_rho
@@ -909,6 +908,35 @@ def crt(a):
         cur = crt2(cur, a[i])
     return cur
    
+def lexkth(n, k):
+    # [1..n]중 사전순으로 k번째
+    k -= 1
+
+    l = len(str(n))
+    s = str(n)
+    sn = 0
+    a = 0
+    cl = 0
+
+    for i in range(l):
+        cl += 1
+        sn = 10 * sn + int(s[i])
+
+        for d in range(i==0, 10):
+            b = 10*a + d
+
+            cnt = (pw10[l-cl] - 1) // 9 
+            if b < sn: cnt += pw10[l-cl]
+            elif b == sn: cnt += n % pw10[l-cl] + 1
+
+            if k == 0: return b
+            if cnt <= k:
+                k -= cnt
+            else:
+                a = 10 * a + d
+                break
+        k -= 1
+
 
 def f(a):
     b = {}
@@ -974,7 +1002,6 @@ def getIntersect(p1, p2, p3, p4):
         else:
             x = F(p1[0]-p4[0], p1[0]-p2[0])
             return [p1[0] + (p2[0]-p1[0])*x, p1[1] + (p2[1]-p1[1])*x]
-
 
 def convexhull(v):
     n = len(v)
