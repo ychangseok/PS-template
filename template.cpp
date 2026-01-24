@@ -58,10 +58,22 @@ int dy[4] = {0, 1, 0, -1};
 int dx[8] = {-2, -1, 1, 2, 2, 1, -1, -2};
 int dy[8] = {1, 2, 2, 1, -1, -2, -2, -1};
 
+// pbds
 #include <ext/pb_ds/assoc_container.hpp>
 #include <ext/pb_ds/tree_policy.hpp>
 using namespace __gnu_pbds;
 #define ordered_set tree<pii, null_type, less<pii>, rb_tree_tag,tree_order_statistics_node_update>
+
+// rope
+// 전부 0-index
+#include <ext/rope>
+using namespace __gnu_cxx;
+// push_back(char c), pop_back(), O(log N)
+// insert(x, r1) : x번째 뒤에 r1 삽입, O(log N) ~ O(N) 
+// erase(x, l) : s[x:x+l] <- [], O(log N)
+// substr(x, l) : returns s[x:x+l], O(log N)
+// replace(x, l, r1) : s[x:x+l] = r1, O(log N)
+// r1+r2 : concatenate, O(1)
 
 /* ================Memo to Myself===========================
 
@@ -688,6 +700,19 @@ ll gcd(ll x, ll y){
 	return y?gcd(y,x%y):x;
 }
 
+ll order(ll p, ll g){
+    // p is prime
+    // fact : fatorization of p-1
+    ll ans = p - 1;
+    for (auto pp : fact){
+        int tmp = p - 1;
+        for (int i = 0; i < pp[1]; i++){
+            if (power(g, tmp, p) != 1) break;
+            ans /= pp[0];
+        }
+    }
+    return ans;
+}
 ll discrete_log(ll p, ll g, ll h){
 	// baby step giant step
 	// O(sqrt{p} log p)
@@ -973,6 +998,304 @@ ll crt(int n, const vector<ll> &a, const vector<ll> &p){
 	return res;
 }
 
+template <ll M = 998244353>
+struct Modint {
+    using V = long long;
+    V val;
+
+    Modint() : val(0) {}
+    Modint(auto y) : val(y % M) {}
+
+    operator V() const { return val; }
+    Modint operator-() const { return Modint() -= *this; }
+    Modint operator+ (auto rhs) const { return Modint(*this) += rhs; }
+    Modint operator- (auto rhs) const { return Modint(*this) -= rhs; }
+    Modint operator* (auto rhs) const { return Modint(*this) *= rhs; }
+    Modint operator/ (auto rhs) const { return Modint(*this) /= rhs; }
+    Modint &operator+= (Modint rhs) { 
+        val += rhs.val;
+        if (val >= M) val -= M;
+        return *this;
+    }
+    Modint &operator-= (Modint rhs) { 
+        val -= rhs.val;
+        if (val < 0) val += M;
+        return *this;
+    }
+    Modint &operator*= (Modint rhs) { val = val * rhs.val % M; return *this; }
+    Modint &operator/= (Modint rhs) { val = val * rhs.inv() % M; return *this; }
+
+    // Modint inv() {return Modint(val).pow(M-2);}
+//   V inv(make_unsigned<T> x=val, V m=M) { return x > 1 ? m - inv(m % x, x) * m / x : 1; }
+    Modint inv(){
+        V res = inv(val, M);
+        return res;
+    }
+    V inv(ll x, ll m) {
+        return x > 1 ? m - inv(m % x, x) * m / x : 1;
+    }
+    Modint pow(auto y) {
+        if (y == 0) return Modint(1);
+        if (y < 0) return Modint(val).inv().pow(-y);
+
+        Modint ans(1);
+        Modint x(val);
+        while (y){
+            if (y % 2) ans *= x;
+            x *= x;
+            y /= 2;
+        }
+        return ans;
+    }
+
+    friend std::ostream &operator<<(std::ostream &os, const Modint<M> &x) { return os << x.val; }
+    friend std::istream &operator>>(std::istream &is, Modint<M> &x) {
+        ll val_;
+        is >> val_;
+        x = val_;
+        return is;
+    }
+};
+using Mint = Modint<998244353>;
+using Poly = vector<Mint>;
+
+struct FPS{
+public:
+    Poly coef;
+
+    FPS (Poly a) : coef(a) {};
+    FPS (int n=0) {
+        coef.resize(1);
+        coef[0] = Mint(n);
+    }
+
+    int size() {return coef.size();};
+    int deg() {return size()-1;};
+    Mint& operator[](int index){
+        assert (index < coef.size());
+        return coef[index];
+    }
+
+    FPS operator+ (auto f){
+        int sz = max(coef.size(), f.coef.size());
+
+        FPS res;
+        res.resize(sz);
+
+        for (int i = 0; i < coef.size(); i++){
+            res.coef[i] += coef[i];
+        }
+        for (int i = 0; i < f.coef.size(); i++){
+            res.coef[i] += f.coef[i];
+        }
+        return res;
+    }
+    FPS operator- (auto f){
+        int sz = max(coef.size(), f.coef.size());
+
+        FPS res;
+        res.resize(sz);
+
+        for (int i = 0; i < coef.size(); i++){
+            res.coef[i] += coef[i];
+        }
+        for (int i = 0; i < f.coef.size(); i++){
+            res.coef[i] -= f.coef[i];
+        }
+        return res;
+    }
+    FPS operator* (auto f) {
+        int sz = coef.size() + f.coef.size() - 1;
+        Poly newcoef = polymul(coef, f.coef);
+        newcoef.resize(sz);
+        return FPS(newcoef);
+    }
+    FPS &operator+= (auto f){
+        return *this = *this + f;
+    }
+    FPS &operator-= (auto f){
+        return *this = *this - f;
+    }
+    FPS &operator*= (auto f) {
+        return *this = *this * f;
+    }
+
+    void resize(int sz){
+        while (coef.size() < sz) coef.push_back(Mint(0));
+        while (coef.size() > sz) coef.pop_back();
+    }
+    void shrink(){
+        while (coef.size() > 1 && coef.back() == 0) coef.pop_back();
+    }
+    
+    FPS power(ll k){
+        FPS res(1);
+        FPS f = *this;
+        res[0] = 1;
+
+        while (k){
+            if (k % 2) res = res * f;
+            f = f * f;
+            k /= 2;
+        }
+        return res;
+    }
+
+    FPS inv(){
+        assert (coef[0] != 0);
+
+        FPS g(Poly{Mint(coef[0]).inv()});
+        FPS two(2);
+
+        int sz = 1;
+        while (sz < coef.size()){
+            FPS f(*this);
+            sz *= 2;
+            f.resize(sz);
+            FPS tmp = g * f;
+            tmp.resize(sz);
+            g = g * (two - tmp);
+            g.resize(sz);
+        }
+
+        g.resize(coef.size());
+        // g.shrink();
+        return g;
+    }
+
+    FPS log(){
+        assert (coef[0] != 0);
+
+        FPS g = (*this).differenciate();
+        g *= (*this).inv();
+        g.resize(coef.size());
+        g = g.integrate();
+        g.resize(coef.size());
+        // g.shrink();
+        return g;
+    }
+
+    FPS differenciate(){
+        FPS res;
+        res.resize(coef.size()-1);
+
+        for (int i = 1; i < coef.size(); i++){
+            res.coef[i-1] = coef[i] * i;
+        }
+        return res;
+    }
+    FPS integrate(){
+        // constant term is 0
+        FPS res;
+        res.resize(size()+1);
+
+        for (int i = 1; i <= coef.size(); i++){
+            res.coef[i] = coef[i-1] * Mint(i).inv();
+        }
+        return res;
+    }
+
+    FPS exp(){
+        assert (coef[0] == 0);
+
+        FPS g(1);
+        FPS one(1);
+
+        int sz = 1;
+        while (sz < 2*coef.size()){
+            FPS f(*this);
+            sz *= 2;
+            f.resize(sz);
+            g = g * (f + one - g.log());
+            g.resize(sz);
+        }
+
+        g.resize(coef.size());
+        // g.shrink();
+        return g;
+    }
+
+    void print(){
+        for (int i = 0; i < coef.size(); i++){
+            cout << coef[i] << ' ';
+        }
+        cout << endl;
+    }
+
+    Mint evaluate(Mint x){
+        Mint res(0);
+        for (int i = coef.size()-1; i >= 0; i--){
+            res *= x;
+            res += coef[i];
+        }
+        return res;
+    }
+private:
+    void ntt(Poly &P, bool inverse, Mint g){
+        int n = P.size();
+        if (n == 1) return;
+
+        for (int i = 1, j = 0; i < n; i++){
+            int bit = n >> 1;
+            for (; j & bit; bit >>= 1) j ^= bit;
+            j ^= bit;
+            if (i < j) swap(P[i], P[j]);
+        }
+
+        vector<Mint> w(n/2);
+        w[0] = 1;
+        for (int i = 1; i < n/2; i++){
+            w[i] = w[i-1] * g;
+        }
+        
+        for (int i = 1; i < n; i <<= 1){
+            int nd = n / (2 * i);
+
+            for (int j = 0; j < n; j += i << 1){
+                for (int k = 0; k < i; k++){
+                    Mint tmp = P[i+j+k] * w[nd * k];
+                    P[i+j+k] = P[j+k] - tmp;
+                    P[j+k] += tmp;
+                }
+            }
+        }
+
+        if (inverse){
+            Mint invn = Mint(n).inv();
+            for (int i = 0; i < n; i++){
+                P[i] *= invn;
+            }
+        }
+    }
+    Poly polymul(Poly v1, Poly v2){
+        ll n1 = v1.size();
+        ll n2 = v2.size();
+
+        ll N = 1;
+        while (N <= n1+n2-1) N *= 2;
+
+        v1.resize(N);
+        v2.resize(N);
+
+        Mint g = Mint(3).pow(998244353 / N);
+
+        ntt(v1, false, g);
+        ntt(v2, false, g);
+
+        Poly res;
+        res.resize(N);
+
+        for (int i = 0; i < N; i++){
+            res[i] = v1[i] * v2[i];
+        }
+        
+        ntt(res, true, g.inv());
+
+        return res;
+    }
+};
+
+
 //========================NEW GEOMETRY=========================
 
 template <class T>
@@ -1017,6 +1340,22 @@ bool isIntersect(PT A, PT B, PT C, PT D){
 		return C <= B && A <= D;
 	}
 	return ab <= 0 && cd <= 0;
+}
+PT getIntersectionPoint(PT A, PT B, PT C, PT D){
+    if (A > B) swap(A, B);
+    if (C > D) swap(C, D);
+    
+    if (ccw(A, B, C) == 0 && ccw(C, D, A) == 0){
+        if (A == D){
+            return A;
+        }else {
+            return B;
+        }
+    }else{
+        lb x = (C-A)^(D-C);
+        x /= (B-A)^(D-C);
+        return A + (B-A) * x;
+    }
 }
 
 polygon convex_hull(polygon v){
@@ -1190,6 +1529,35 @@ polygon HPI(vector<Line>& lines){
     return res;
 }
 
+int isIntersect2(PT A, PT B, PT C, PT D){
+    // check segment AB and segment CD intersects
+    // parallel -> 2, intersect -> 1, other -> 0
+
+	ll ab = ccw(A, B, C) * ccw(A, B, D);
+	ll cd = ccw(C, D, A) * ccw(C, D, B);
+    
+    if (((B-A)^(D-C)) == 0) return 2;
+    if (ab <= 0 && cd < 0) return 1;
+    return 0;
+}
+bool intersect(const polygon &v, PT p1, PT p2){
+    // check segment p1-p2 and interior of v intersects
+
+    if (v.size() < 3) return false;
+
+    for (int i = 0; i < v.size(); i++){
+        int k = isIntersect2(p1, p2, v[i], v[(i+1)%v.size()]);
+        if (k == 2) continue;
+        if (k == 1) return true;
+    }
+
+    PT p = (p1 + p2);
+    p.x /= 2;
+    p.y /= 2;
+    
+    if (PointInConvexPolygon(v, p)) return true;
+    return false;
+}
 
 struct P3{
     lb x, y, z;
@@ -1210,6 +1578,52 @@ struct P3{
         return sqrt(x*x+y*y+z*z);
     }
 };
+
+// not verified
+bool inside(const PT &A, const PT &B, const PT &P){
+    return (A-P)*(B-P) > 0;
+}
+bool inside(const PT &A, const PT &B, const PT &C, const PT &P){
+    PT U = B - P;
+    PT V = A - P;
+    PT S = A - C;
+    PT T = B - C;
+
+    bool res = true;
+    res ^= (U ^ V) < 0;
+    res ^= (U*V)*(S^T) + (U^V)*(S*T) > 0;
+    return res;
+}
+bool inside(const polygon &C, const PT &p){
+    if (C.size() == 2) return inside(C[0], C[1], p);
+    else if (C.size() == 3) return inside(C[0], C[1], C[2], p);
+    else exit(1);
+}
+polygon mec(polygon &v){
+    // Welzl's algorithm, expected O(n)
+    // requires <random>
+
+    int n = v.size();
+    shuffle(all(v), mt19937{random_device{}()});
+    polygon C{v[0], v[1]};
+
+    for (int i = 0; i < n; i++){
+        if (inside(C, v[i])) continue;
+        C = polygon{v[0], v[i]};
+
+        for (int j = 0; j < i; j++){
+            if (inside(C, v[j])) continue;
+            C = polygon{v[i], v[j]};
+
+            for(int k = 0; k < j; k++){
+                if (inside(C, v[k])) continue;
+                C = polygon{v[i], v[j], v[k]};
+            }
+        }
+    }
+
+    return C;
+}
 
 //===========================GEOMETRY=======================
 
@@ -2754,7 +3168,7 @@ struct HLD{
         dfs(); dfs1(); dfs2();
     }
 
-    array<vector<array<int, 2>>, 2> getPath(int u, int v){
+    array<vector<array<int, 2>>, 2> getPath(int u, int v, bool includeLCA=true){
         vector<array<int, 2>> v1, v2;
 
         while (top[u] != top[v]){
@@ -2771,25 +3185,12 @@ struct HLD{
 
 
         if (dep[u] < dep[v]){
-            v2.push_back({in[u], in[v]});
+            v2.push_back({in[u]+1-includeLCA, in[v]});
         }else{
-            v1.push_back({in[v], in[u]});
+            v1.push_back({in[v]+1-includeLCA, in[u]});
         }
 
         return {v1, v2};
-
-        // auto pp = hld.getPath(u, v);
-        // Node res1 = id;
-        // Node res2 = id;
-
-        // for (auto p2 : pp[0]){
-        //     res1 = seg.merge(seg.query(p2[0], p2[1]+1), res1);
-        // }
-        // for (auto p2 : pp[1]){
-        //     res2 = seg.merge(seg.query(p2[0], p2[1]+1), res2);
-        // }
-        // swap(res1.lsum, res1.rsum);
-        // auto res = seg.merge(res1, res2);
     }
 };
 
@@ -3412,22 +3813,10 @@ struct segTree{
     }
 
     inline T merge(T n1, T n2){
-        if (n1.isidentity) return n2;
-        if (n2.isidentity) return n1;
 
-        return Node(
-            max(n1.lsum, n1.sum + n2.lsum),
-            max(n2.rsum, n1.rsum + n2.sum),
-            max(n1.q, max(n1.rsum + n2.lsum, n2.q)),
-            n1.sum + n2.sum
-        );
     }
     inline T add(T n1, T n2){
-        if (n1.isidentity) return n2;
-        if (n2.isidentity) return n1;
-
-        Node res(n1.sum + n2.sum, false);
-        return res;
+        
     }
 
     void update(int idx, T val){
@@ -3829,6 +4218,224 @@ struct BinaryTrie{
         }
 
         return res;
+    }
+};
+
+template <class T, class S>
+struct SplayTree{
+public:
+
+    T query(int s, int e){
+        return gather(s, e)->sum;
+    }
+
+    void set(int s, ll val){
+        kth(s);
+        tree->v = val;
+        update(tree);
+    }
+    
+    void range_update(int s, int e, S val){
+        Node* x = gather(s, e);
+        x->lazy = merge_lazy(x->lazy, val);
+        x->sum += x->sz * val;
+    }
+    
+    int getidx(int x){
+        Node* x = ptr[p[x]];
+        splay(x);
+        return tree->l->sz;
+    }
+
+    void flip(int s, int e){
+        Node* x = gather(s, e);
+        x->flip = !x->flip;
+    }
+    
+    void shift(int s, int e, int x){
+        // [s, e]를 오른쪽으로 x만큼 shift
+        int l = e - s + 1;
+        if (x < 0) x = l + x;
+        if (x >= l) x %= l;
+        if (x == 0) return;
+
+        flip(s, e-x);
+        flip(e-x+1, e);
+        flip(s, e);
+    }
+
+    SplayTree(ll a[], int n){
+        if (tree) delete tree;
+
+        ptr = vector<Node*>(n+2, nullptr);
+        p = vector<int>(n+1, 0);
+
+        tree = ptr[0] = new Node(-1);
+        for (int i = 1; i <= n; i++){
+            p[a[i]] = i;
+            tree->r = ptr[i] = new Node(a[i], tree);
+            tree = tree->r;
+        }
+        tree->r = ptr[n+1] = new Node(0, tree);
+
+        for (int i = n+1; i >= 0; i--){
+            update(ptr[i]);
+        }
+        
+        splay(ptr[n/2]);
+    }
+
+    ~SplayTree() {
+        if (tree) delete tree;
+    }
+private:
+    struct Node{
+        Node* l;
+        Node* r;
+        Node* p;
+        int sz;
+        bool flip;
+        ll v;
+        T sum;
+        S lazy;
+
+
+        Node(ll v_=0, Node* p_=nullptr){
+            l = r = nullptr;
+            p = p_;
+            sz = 1;
+            v = v_;
+            sum = T(v_);
+            lazy = S();
+            flip = false;
+        }
+
+        ~Node() {
+            if (l) delete l;
+            if (r) delete r;
+        }
+    };
+
+    Node* tree = nullptr;
+    vector<Node*> ptr;
+    vector<int> p;
+
+    inline T merge_node(T n1, T n2){
+        return n1+n2;
+    }
+    inline S merge_lazy(S n1, S n2){
+        return n1+n2;
+    }
+    inline S act(T node, int l, int r, S lazy){
+
+    }
+
+    void push(Node* x){
+        x->v += x->lazy;
+        if (x->l){
+            x->l->lazy = merge_lazy(x->l->lazy, x->lazy);
+            x->l->sum += x->l->sz * x->lazy;
+        }
+        if (x->r){
+            x->r->lazy = merge_lazy(x->r->lazy, x->lazy);
+            x->r->sum += x->r->sz * x->lazy;
+        }
+        x->lazy = 0;
+    }   
+    void push(Node* x){
+        if (x->flip){
+            swap(x->l, x->r);
+            if (x->l) x->l->flip = !x->l->flip;
+            if (x->r) x->r->flip = !x->r->flip;
+            x->flip = false;
+        }
+    }
+    void update(Node *x){
+        x->sz = 1;
+        x->sum = T(x->v);
+        if (x->l) {
+            x->sz += x->l->sz;
+            x->sum = merge_node(x->l->sum, x->sum);
+        }
+        if (x->r) {
+            x->sz += x->r->sz;
+            x->sum = merge_node(x->sum, x->r->sum);
+        }
+    }
+
+    void rotate(Node *x){
+        Node *p = x->p;
+        Node *b = NULL;
+        
+        if (!p) return;
+        
+        push(p);
+        push(x);
+
+        if (x == p->l){
+            p->l = b = x->r;
+            x->r = p;
+        }else{
+            p->r = b = x->l;
+            x->l = p;
+        }
+
+        x->p = p->p;
+        p->p = x;
+        if (b) b->p = p;
+
+        if (x->p){
+            if (p == x->p->l) x->p->l = x;
+            else x->p->r = x;
+        }else{
+            tree = x;
+        }
+
+        update(p);
+        update(x);
+    }
+
+    void splay(Node* x, Node* g = nullptr){
+        while (x->p != g){
+            Node *p = x->p;
+
+            if (p->p == g) rotate(x);
+            else {
+                Node *pp = p->p;
+                if ((x==p->l) == (p==pp->l)) rotate(p);
+                else rotate(x);
+                rotate(x);
+            }
+        }
+
+        if (!g) tree = x;
+    }
+
+    void kth(int k){
+        // 0 based
+        Node* x = tree;
+        push(x);
+        while (1){
+            while (x->l && x->l->sz > k) {
+                x = x->l;
+                push(x);
+            }
+            if (x->l) k -= x->l->sz;
+            if (k == 0) break;
+            k -= 1;
+            x = x->r;
+            push(x);
+        }
+        splay(x);
+    }
+    
+    Node* gather(int s, int e){
+        // gather [s, e]
+        kth(e+1);
+        Node* tmp = tree;
+        kth(s-1);
+        splay(tmp, tree);
+        return tree->r->l;
     }
 };
 
