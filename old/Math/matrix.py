@@ -45,15 +45,10 @@ def matrix_mod(x, mod):
 def matrix_power(x, y, mod=0):
     n = len(x)
     res = unit_matrix(n)
-    s = bin(y)[2:]
-    for i in s:
-        if ord(i) == 49:
-            res = matrix_mul(res, res, mod)
-            res = matrix_mul(res, x, mod)
-            res = matrix_mod(res, mod)
-        else:
-            res = matrix_mul(res, res, mod)
-            res = matrix_mod(res, mod)
+    while y:
+        if y % 2 == 1: res = matrix_mul(res, x, mod)
+        x = matrix_mul(x, x, mod)
+        y //= 2
     return res
 def det(m, MOD):
     # m is n by n matrix
