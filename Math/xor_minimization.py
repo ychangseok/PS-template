@@ -1,4 +1,5 @@
 def xor_minimization(a):
+    # return min(<a>)
     basis = []
     for k in a:
         for b in basis:
