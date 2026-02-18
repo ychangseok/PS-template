@@ -2,14 +2,12 @@ template<class T>
 Polynomial<T> linear_det(Matrix<T> A, Matrix<T> B, ll mod=0){
     // calculate det(Ax+B)
     int n = A.n;
-
     assert(n == A.m && n == B.n && n == B.n);
   
     int a = 0, b = 0;
     ll det = 1;
 
     while (a + b < n){
-
         for (int i = 0; i < a; i++){
             B.cadd(a, i, mod-A[{i, a}], mod);
             A.cadd(a, i, mod-A[{i, a}], mod);
@@ -85,8 +83,6 @@ Polynomial<T> linear_det(Matrix<T> A, Matrix<T> B, ll mod=0){
             }
         }
     }
-
-    
 
     Matrix<T> C(a);
         
