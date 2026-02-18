@@ -27,11 +27,5 @@ vector<int> manacher(string s){
         }
     }
 
-    // cout << ss << '\n';
-    // for (int i : res){
-    //     cout << i;
-    // }
-    // cout << '\n';
-
     return res;
 }
