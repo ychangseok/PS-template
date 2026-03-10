@@ -25,8 +25,6 @@ struct Modint {
     Modint &operator*= (Modint rhs) { val = val * rhs.val % M; return *this; }
     Modint &operator/= (Modint rhs) { val = val * rhs.inv() % M; return *this; }
 
-    // Modint inv() {return Modint(val).pow(M-2);}
-//   V inv(make_unsigned<T> x=val, V m=M) { return x > 1 ? m - inv(m % x, x) * m / x : 1; }
     Modint inv(){
         V res = inv(val, M);
         return res;
