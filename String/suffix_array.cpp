@@ -54,7 +54,7 @@ struct SA{
         for (int i = 0, k = 0; i < n; i++, k = max(k-1, 0)){
             if (pos[i] == n-1) continue;
 
-            for (int j = sa[pos[i]+1]; s[i+k] == s[j+k]; k++);
+            for (int j = sa[pos[i]+1]; max(i+k, j+k) < s.size() && s[i+k] == s[j+k]; k++);
 
             lcp[pos[i]] = k;
         }
