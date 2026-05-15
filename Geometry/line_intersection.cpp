@@ -18,7 +18,7 @@ PT getIntersectionPoint(PT A, PT B, PT C, PT D){
     if (A > B) swap(A, B);
     if (C > D) swap(C, D);
     
-    if (ccw(A, B, C) == 0 && ccw(C, D, A) == 0){
+    if ((B.y-A.y)*(D.x-C.x) == (D.y-C.y)*(B.x-A.x)){
         if (A == D){
             return A;
         }else {
