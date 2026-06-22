@@ -4,8 +4,11 @@ struct face{
 };
 vector<face> convex_hull_3d(vector<PT> &p){
     // https://codeforces.com/blog/entry/81768
-    // assume pts are not on the same plane
-
+    // -1. 중복 점 제거 (normalize 등하면 중복 점이 생길 수도 있다)
+    // 0. size <= 3 -> exit
+    // 1. 전부 한 직선 위에 있는지 판정 yes -> exit
+    // 2. first 3 points are not on the same line일 때까지 셔플하고 전부 한 평면 위에 있는 지 판정 yes -> exit
+    
     int n = p.size();
     if (n <= 3) exit(1);
 
